@@ -252,13 +252,35 @@ class Ppu {
     this.th |= this.readInternal(this.bgPatternBase + tileNum * 16 + fineY + 8);
   }
   generateDot() {
-    let i = this.cycles & 0x7;
-    let bgPixel = 0;
-    let sprPixel = 0;
-    let sprNum = -1;
-    let sprPriority = 0;
     let color;
+    const bgPixel = this.getnerateBgDot()
+    const sprobj = this.generateSpriteDot();
 
+    if (!this.bgRendering && !this.sprRendering) {
+      if ((this.v & 0x3fff) >= 0x3f00) {
+        color = this.readPalette(this.v & 0x1f);
+      } else {
+        color = this.readPalette(0);
+      }
+    } else if (bgPixel === 0) {
+      if (sprobj.sprPixel > 0) {
+        color = this.readPalette(sprobj.sprPixel + 0x10);
+      } else {
+        color = this.readPalette(0);
+      }
+    } else if (sprobj.sprPixel > 0 && sprobj.sprPriority === 0) {
+      color = this.readPalette(sprobj.sprPixel + 0x10);
+    } else {
+      color = this.readPalette(bgPixel);
+    }
+    this.setColorPalette(color);
+  }
+  generateSpriteDot(){
+    let sprobj ={
+      sprPixel:0,
+      sprPriority:0
+    }
+    let sprNum = -1;
     if (this.sprRendering && (this.cycles > 7 || this.sprInLeft)) {
       for (let j = 0; j < this.spriteCount; j++) {
         let xPos = this.secondaryOam[j * 4 + 3];
@@ -271,15 +293,22 @@ class Ppu {
           let pixel = (this.spriteTiles[j] >> shift) & 1;
           pixel |= ((this.spriteTiles[j + 8] >> shift) & 1) << 1;
           if (pixel > 0) {
-            sprPixel = pixel | ((this.secondaryOam[j * 4 + 2] & 0x3) << 2);
-            sprPriority = (this.secondaryOam[j * 4 + 2] & 0x20) >> 5;
+            sprobj.sprPixel = pixel | ((this.secondaryOam[j * 4 + 2] & 0x3) << 2);
+            sprobj.sprPriority = (this.secondaryOam[j * 4 + 2] & 0x20) >> 5;
             sprNum = j;
             break;
           }
         }
       }
     }
-
+    if (sprNum === 0 && this.spriteZeroIn && this.cycles !== 255) {
+      this.spriteZero = true;
+    }
+    return sprobj;
+  }
+  getnerateBgDot(){
+    let i = this.cycles & 0x7;
+    let bgPixel = 0;
     if (this.bgRendering && (this.cycles > 7 || this.bgInLeft)) {
       let shiftAmount = 15 - i - this.x;
       bgPixel = (this.tl >> shiftAmount) & 1;
@@ -294,34 +323,7 @@ class Ppu {
         bgPixel += atrOff;
       }
     }
-
-    if (!this.bgRendering && !this.sprRendering) {
-      if ((this.v & 0x3fff) >= 0x3f00) {
-        color = this.readPalette(this.v & 0x1f);
-      } else {
-        color = this.readPalette(0);
-      }
-    } else {
-      if (bgPixel === 0) {
-        if (sprPixel > 0) {
-          color = this.readPalette(sprPixel + 0x10);
-        } else {
-          color = this.readPalette(0);
-        }
-      } else {
-        if (sprPixel > 0) {
-          if (sprNum === 0 && this.spriteZeroIn && this.cycles !== 255) {
-            this.spriteZero = true;
-          }
-        }
-        if (sprPixel > 0 && sprPriority === 0) {
-          color = this.readPalette(sprPixel + 0x10);
-        } else {
-          color = this.readPalette(bgPixel);
-        }
-      }
-    }
-    this.setColorPalette(color);
+    return bgPixel;
   }
   setColorPalette(color) {
     let clr = (this.emphasis << 6) | (color & 0x3f);
