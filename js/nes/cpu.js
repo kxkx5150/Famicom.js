@@ -72,6 +72,23 @@ class Cpu {
     }
     this.cycles--;
   }
+  requestIrq(){
+    
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   setPC = function (addr) {
     this.PC[0] = addr;
   };

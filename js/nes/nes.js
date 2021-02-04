@@ -23,7 +23,7 @@ class Nes {
   constructor(canvas_id) {
     this.canvas = document.getElementById(canvas_id);
     if (!this.canvas) {
-      console.error("error canvas id !");
+      console.error("Error canvas id !");
     } else {
       this.canvas.width = 256;
       this.canvas.height = 240;
@@ -31,14 +31,17 @@ class Nes {
       this.imgData = this.ctx.createImageData(256, 240);
 
       this.actx = new AudioContext();
-      this.samples = this.actx.sampleRate / 60;
-      this.audioBuf = new Float64Array(this.samples);
-      this.inputBuffer = new Float64Array(4096);
-      this.inputBufferPos = 0;
-      this.inputReadPos = 0;
+      if(this.actx){
+        this.samples = this.actx.sampleRate / 60;
+        this.audioBuf = new Float64Array(this.samples);
+        this.inputBuffer = new Float64Array(4096);
+        this.inputBufferPos = 0;
+        this.inputReadPos = 0;
+        this.initWebAudio();
+      }
 
       this.io = new Io(this);
-      this.ppu = new Ppu(this.imgData.data.buffer);
+      this.ppu = new Ppu(this.nes,this.imgData.data.buffer);
       this.mem = new Mem(this, this.ppu,this.io);
       this.cpu = new Cpu(this.mem);
       this.dma = new Dma(this.mem);
@@ -49,7 +52,6 @@ class Nes {
       this.mem.setDma(this.dma);
       this.cpu.setIrq(this.irq);
       this.ppu.setIrq(this.irq);
-      this.initWebAudio();
     }
   }
   reset() {
@@ -62,9 +64,7 @@ class Nes {
     this.io.reset();
     this.irq.reset();
     this.dma.reset();
-    if (this.mapper) {
-      this.mapper.reset(true);
-    }
+    if (this.mapper) this.mapper.reset(true);
     this.inputBufferPos = 0;
     this.inputReadPos = 0;
   }
@@ -85,7 +85,31 @@ class Nes {
       this.mem.setMapper(mapper);
       this.ppu.setMapper(mapper);
     }
+
+
+
+    let array = new Uint8Array(arybuf);
+    let binaryString = String.fromCharCode.apply(null, array);
+    this.rom = new ROM(this)
+    this.rom.load(binaryString)
+    this.mmap = this.rom.createMapper();
+    this.mmap.loadROM();
+
+
+    console.log(this);
+
   }
+
+
+
+
+
+
+
+
+
+
+
   cycle(info) {
     if (this.cycles % 3 === 0) {
       if (this.io.ctrlLatched) {
@@ -134,13 +158,11 @@ class Nes {
     this.nextBuffer(this.audioBuf);
   }
   nextBuffer(abuf) {
-    if (!this.actx) return;
     for (let i = 0; i < this.samples; i++) {
       this.inputBuffer[this.inputBufferPos++ & 0xfff] = abuf[i];
     }
   }
   initWebAudio() {
-    if (!this.actx) return;
     const sp = this.actx.createScriptProcessor(2048, 1, 1);
     sp.onaudioprocess = (e) => {
       this.process(e);
@@ -160,6 +182,7 @@ class Nes {
     }
   }
   startWebAudio() {
+    if (!this.actx) return;
     this.actx.resume();
   }
   keyDown(player, button) {
@@ -193,7 +216,6 @@ class Nes {
       }
     }
     this.mapper = nrom;
-
     console.log(nrom);
     console.log(
       "Loaded " + this.mapper.name + " rom: " + this.mapper.h.banks +
@@ -217,7 +239,6 @@ class Nes {
     }
     return header;
   }
-
   parseHeader(rom) {
     let nrom = {
       banks: rom[4],
@@ -235,6 +256,12 @@ class Nes {
     nrom["saveVars"] = ["banks", "chrBanks", "mapper", "verticalMirroring", "battery", "trainer", "fourScreen"];
     return nrom;
   }
+  runCount(arybuf, count, info) {
+    if (!this.init(arybuf)) return;
+    for (let i = 0; i < count; i++) {
+      this.cycle(info);
+    }
+  }
   INPUT = {
     A: 0,
     B: 1,
@@ -245,10 +272,5 @@ class Nes {
     LEFT: 6,
     RIGHT: 7,
   };
-  runCount(arybuf, count, info) {
-    if (!this.init(arybuf)) return;
-    for (let i = 0; i < count; i++) {
-      this.cycle(info);
-    }
-  }
+
 }

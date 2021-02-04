@@ -2,6 +2,7 @@ class Ppu {
   mapper = null;
   irq = null;
   buffer = null;
+  nes = null;
 
   paletteRam = new Uint8Array(0x20);
   oamRam = new Uint8Array(0x100);
@@ -45,8 +46,20 @@ class Ppu {
   spriteZeroIn = false;
   spriteCount = 0;
 
-  constructor(buffer) {
+
+
+
+
+
+
+
+  constructor(nes,buffer) {
+    this.nes = nes;
     this.buffer = new Uint32Array(buffer);
+
+
+    this.reset()
+
   }
   setMapper(mapper) {
     this.mapper = mapper;
@@ -55,6 +68,38 @@ class Ppu {
     this.irq = irq;
   }
   reset() {
+    // Memory
+    let i = 0;
+    this.vramMem = new Array(0x8000);
+    this.spriteMem = new Array(0x100);
+    for (i = 0; i < this.vramMem.length; i++) {
+      this.vramMem[i] = 0;
+    }
+    for (i = 0; i < this.spriteMem.length; i++) {
+      this.spriteMem[i] = 0;
+    }
+    this.vramMirrorTable = new Array(0x8000);
+    for (i = 0; i < 0x8000; i++) {
+      this.vramMirrorTable[i] = i;
+    }
+        // Create pattern table tile buffers:
+    this.ptTile = new Array(512);
+    for (i = 0; i < 512; i++) {
+      this.ptTile[i] = new Tile();
+    }
+
+
+
+
+    
+    
+
+
+
+
+
+
+
     this.paletteRam.fill(0);
     this.oamRam.fill(0);
     this.secondaryOam.fill(0);
@@ -97,6 +142,14 @@ class Ppu {
     this.spriteZeroIn = false;
     this.spriteCount = 0;
   }
+
+
+
+
+
+
+
+
 
   run() {
     if (this.line < 240) {
@@ -533,6 +586,13 @@ class Ppu {
       }
     }
   }
+  // empty functions
+  triggerRendering(){
+  }
+
+
+
+
   nesColorPalette = [
     [101, 101, 101],
     [0, 45, 105],
