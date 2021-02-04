@@ -1,4 +1,4 @@
-mappers[0] = function (rom, header) {
+mappers[0] = function (nes,rom, header) {
   this.name = "NROM";
   this.version = 1;
   this.rom = rom;

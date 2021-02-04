@@ -186,12 +186,19 @@ class Nes {
       return false;
     } else {
       try {
-        nrom = new mappers[header.mapper](rom, header);
+        nrom = new mappers[header.mapper](this,rom, header);
       } catch (e) {
         console.log("Rom load error: " + e);
         return false;
       }
     }
+    this.mapper = nrom;
+
+    console.log(nrom);
+    console.log(
+      "Loaded " + this.mapper.name + " rom: " + this.mapper.h.banks +
+      " PRG bank(s), " + this.mapper.h.chrBanks + " CHR bank(s)"
+    );
     return nrom;
   }
   checkRom(rom) {
