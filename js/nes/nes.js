@@ -31,7 +31,7 @@ class Nes {
       this.imgData = this.ctx.createImageData(256, 240);
 
       this.actx = new AudioContext();
-      if(this.actx){
+      if (this.actx) {
         this.samples = this.actx.sampleRate / 60;
         this.audioBuf = new Float64Array(this.samples);
         this.inputBuffer = new Float64Array(4096);
@@ -41,12 +41,12 @@ class Nes {
       }
 
       this.io = new Io(this);
-      this.ppu = new Ppu(this.nes,this.imgData.data.buffer);
-      this.mem = new Mem(this, this.ppu,this.io);
+      this.ppu = new Ppu(this.nes, this.imgData.data.buffer);
+      this.mem = new Mem(this, this.ppu, this.io);
       this.cpu = new Cpu(this.mem);
       this.dma = new Dma(this.mem);
       this.irq = new Irq(this.cpu);
-      this.apu = new Apu(this,this.mem,this.irq);
+      this.apu = new Apu(this, this.mem, this.irq);
 
       this.mem.setApu(this.apu);
       this.mem.setDma(this.dma);
@@ -85,30 +85,7 @@ class Nes {
       this.mem.setMapper(mapper);
       this.ppu.setMapper(mapper);
     }
-
-
-
-    let array = new Uint8Array(arybuf);
-    let binaryString = String.fromCharCode.apply(null, array);
-    this.rom = new ROM(this)
-    this.rom.load(binaryString)
-    this.mmap = this.rom.createMapper();
-    this.mmap.loadROM();
-
-
-    console.log(this);
-
   }
-
-
-
-
-
-
-
-
-
-
 
   cycle(info) {
     if (this.cycles % 3 === 0) {
@@ -209,7 +186,7 @@ class Nes {
       return false;
     } else {
       try {
-        nrom = new mappers[header.mapper](this,rom, header);
+        nrom = new mappers[header.mapper](this, rom, header);
       } catch (e) {
         console.log("Rom load error: " + e);
         return false;
@@ -218,8 +195,13 @@ class Nes {
     this.mapper = nrom;
     console.log(nrom);
     console.log(
-      "Loaded " + this.mapper.name + " rom: " + this.mapper.h.banks +
-      " PRG bank(s), " + this.mapper.h.chrBanks + " CHR bank(s)"
+      "Loaded " +
+        this.mapper.name +
+        " rom: " +
+        this.mapper.h.banks +
+        " PRG bank(s), " +
+        this.mapper.h.chrBanks +
+        " CHR bank(s)"
     );
     return nrom;
   }
@@ -272,5 +254,4 @@ class Nes {
     LEFT: 6,
     RIGHT: 7,
   };
-
 }

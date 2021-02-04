@@ -46,20 +46,11 @@ class Ppu {
   spriteZeroIn = false;
   spriteCount = 0;
 
-
-
-
-
-
-
-
-  constructor(nes,buffer) {
+  constructor(nes, buffer) {
     this.nes = nes;
     this.buffer = new Uint32Array(buffer);
 
-
-    this.reset()
-
+    this.reset();
   }
   setMapper(mapper) {
     this.mapper = mapper;
@@ -68,38 +59,6 @@ class Ppu {
     this.irq = irq;
   }
   reset() {
-    // Memory
-    let i = 0;
-    this.vramMem = new Array(0x8000);
-    this.spriteMem = new Array(0x100);
-    for (i = 0; i < this.vramMem.length; i++) {
-      this.vramMem[i] = 0;
-    }
-    for (i = 0; i < this.spriteMem.length; i++) {
-      this.spriteMem[i] = 0;
-    }
-    this.vramMirrorTable = new Array(0x8000);
-    for (i = 0; i < 0x8000; i++) {
-      this.vramMirrorTable[i] = i;
-    }
-        // Create pattern table tile buffers:
-    this.ptTile = new Array(512);
-    for (i = 0; i < 512; i++) {
-      this.ptTile[i] = new Tile();
-    }
-
-
-
-
-    
-    
-
-
-
-
-
-
-
     this.paletteRam.fill(0);
     this.oamRam.fill(0);
     this.secondaryOam.fill(0);
@@ -142,14 +101,6 @@ class Ppu {
     this.spriteZeroIn = false;
     this.spriteCount = 0;
   }
-
-
-
-
-
-
-
-
 
   run() {
     if (this.line < 240) {
@@ -306,7 +257,7 @@ class Ppu {
   }
   generateDot() {
     let color;
-    const bgPixel = this.getnerateBgDot()
+    const bgPixel = this.getnerateBgDot();
     const sprobj = this.generateSpriteDot();
 
     if (!this.bgRendering && !this.sprRendering) {
@@ -328,11 +279,11 @@ class Ppu {
     }
     this.setColorPalette(color);
   }
-  generateSpriteDot(){
-    let sprobj ={
-      sprPixel:0,
-      sprPriority:0
-    }
+  generateSpriteDot() {
+    let sprobj = {
+      sprPixel: 0,
+      sprPriority: 0,
+    };
     let sprNum = -1;
     if (this.sprRendering && (this.cycles > 7 || this.sprInLeft)) {
       for (let j = 0; j < this.spriteCount; j++) {
@@ -359,7 +310,7 @@ class Ppu {
     }
     return sprobj;
   }
-  getnerateBgDot(){
+  getnerateBgDot() {
     let i = this.cycles & 0x7;
     let bgPixel = 0;
     if (this.bgRendering && (this.cycles > 7 || this.bgInLeft)) {
@@ -587,11 +538,7 @@ class Ppu {
     }
   }
   // empty functions
-  triggerRendering(){
-  }
-
-
-
+  triggerRendering() {}
 
   nesColorPalette = [
     [101, 101, 101],
