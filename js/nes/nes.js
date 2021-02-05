@@ -84,8 +84,6 @@ class Nes {
       this.mapper = mapper;
       this.mem.setMapper(mapper);
       this.ppu.setMapper(mapper);
-
-      console.log(this);
     }
   }
 

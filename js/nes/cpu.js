@@ -22,7 +22,6 @@ class Cpu {
   carry = false;
 
   cycles = 7;
-  cycletotal = 7;
 
   reset() {
     this.A[0] = 0;
@@ -39,55 +38,31 @@ class Cpu {
     this.carry = false;
 
     this.cycles = 7;
-    this.cycletotal = 7;
   }
 
-  run(info) {
+  run() {
     if (this.cycles === 0) {
-      const pcaddr = this.PC[0];
-      let instr = this.mem.read(this.PC[0]++);
-      this.cycles = this.opcodes[instr].cycle;
-
       const val = this.irq.checkCpuIrqWanted();
-      if (val === "nmi") {
-        this.PC[0]--;
+      if (val) {
+        if (val === "nmi") {
+          let iop = this.opcodes[0x100].op;
+          this.execInstruction(iop);
+        } else if (val === "irq") {
+          let iop = this.opcodes[0x101].op;
+          this.execInstruction(iop);
+        }
+        this.irq.irqWanted = false;
         this.irq.nmiWanted = false;
-        instr = 0x100;
-        this.cycles = 7;
-      } else if (val === "irq") {
-        this.PC[0]--;
-        instr = 0x101;
-        this.cycles = 7;
       }
 
-      this.cycletotal += this.cycles;
+      let instr = this.mem.read(this.PC[0]++);
       const opobj = this.opcodes[instr];
+      this.cycles = opobj.cycle;
       let addr = this.getAddr(opobj.adm);
       this.execInstruction(opobj.op, addr);
-      if (info) {
-        console.log("");
-        console.log("cpu op : " + this.opcodes[instr].op);
-        console.log("cpu pc : " + pcaddr.toString(16));
-      }
     }
     this.cycles--;
   }
-  requestIrq(){
-    
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   setPC = function (addr) {
     this.PC[0] = addr;
