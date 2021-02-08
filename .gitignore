@@ -1,3 +1,6 @@
 ref/
 roms/
 .vscode/
+.eslintrc.js
+.gitignore
+.eslintrc.json
