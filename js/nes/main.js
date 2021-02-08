@@ -82,7 +82,7 @@ class NES {
   runNES() {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
-      this.cpu.runCpu();
+      if(this.cpu.runCpu())break;
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
@@ -411,6 +411,7 @@ class NES {
       // 	this.mapper = new Mapper19(this);
       // 	break;
       default:
+        this.mapper = new Mapper0(this);
         return false;
     }
     return true;

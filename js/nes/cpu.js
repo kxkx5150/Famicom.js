@@ -18,6 +18,7 @@ class CPU {
 
     this.toIRQ = 0x00;
     this.CPUClock = 7;
+    this.cycles = 0;
     this.opcodes = [
       { int: 0, hex: "0", op: "BRK", adm: "IMP", cycle: 7 },
       { int: 1, hex: "1", op: "ORA", adm: "IZX", cycle: 6 },
@@ -292,23 +293,27 @@ class CPU {
     this.zero = false;
     this.carry = false;
     this.CPUClock = 7;
+    this.cycles = 7;
     this.toIRQ = 0x00;
   }
   initCpu() {
     this.reset();
     this.PC[0] = this.mem.Get16(0xfffc);
   }
+  initTest() {
+    this.cycles = 7;
+    this.PC[0] = 0xc000;
+  }
   runCpu() {
     let instr = this.mem.Get(this.PC[0]++);
     this.CPUClock = this.opcodes[instr].cycle;
-
     const val = this.nes.irq.checkCpuIrqWanted();
     if (val === "nmi") {
       this.PC[0]--;
       this.nes.irq.nmiWanted = false;
       instr = 0x100;
       this.CPUClock = 7;
-    } else if (val === "irq"){
+    } else if (val === "irq") {
       this.PC[0]--;
       this.nes.irq.irqWanted = false;
       this.toIRQ = 0x00;
@@ -318,7 +323,7 @@ class CPU {
     const opobj = this.opcodes[instr];
     let addr = this.getAddr(opobj.adm);
     this.execInstruction(opobj.op, addr);
-    return
+    return;
   }
   showRegisters() {
     console.log("========= cpu_info =========");
@@ -330,6 +335,8 @@ class CPU {
     console.log("");
     console.log("negative : " + this.negative);
     console.log("overflow : " + this.overflow);
+    console.log("-------- : true");
+    console.log("break   ");
     console.log("decimal  : " + this.decimal);
     console.log("interrupt: " + this.interrupt);
     console.log("zero     : " + this.zero);
