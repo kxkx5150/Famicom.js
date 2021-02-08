@@ -263,9 +263,9 @@ class NES {
       // case 9:
       // 	this.mapper = new Mapper9(this);
       // 	break;
-      // case 10:
-      // 	this.mapper = new Mapper10(this);
-      // 	break;
+      case 10:
+      	this.mapper = new Mapper10(this);
+      	break;
       // case 16:
       // 	this.mapper = new Mapper16(this);
       // 	break;
