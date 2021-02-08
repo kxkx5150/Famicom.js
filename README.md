@@ -13,7 +13,6 @@ NES Emulator
 
 <br>
 
-現在は mapper 0 のROMしか対応していません。
 ![キャプチャ](https://user-images.githubusercontent.com/10168979/106599944-1dd98e80-659d-11eb-99a9-72e8363cb07b.PNG)
 
 <br>
