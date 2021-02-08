@@ -7,22 +7,23 @@ body {
   padding: 0;
   color: #ccc;
   background: #191919;
+  font-size: 13px;
+  text-align: center;
+  font-family: arial, sans-serif;
+}
+input {
+  font-size: 13px;
   text-align: center;
   font-family: arial, sans-serif;
 }
 #output {
   width: 256px;
-  height: 240px;
+  height: 224px;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
-.ctrl_div{
+.ctrl_div {
   text-align: right;
-  font-size: 12px;
-  padding: 2px;
-  background-color: revert;
-}
-#fileInput{
-  margin-left: 24px;
-  font-size: 13px;
+  background: content-box;
+  color: #999;
 }

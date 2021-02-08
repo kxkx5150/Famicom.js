@@ -1,766 +1,1202 @@
-class Apu {
-  nes = null;
-  mem = null;
-  irq = null;
+class APU {
+  constructor(nes) {
+    this.nes = nes;
 
-  constructor(mem,irq) {
-    this.mem = mem;
-    this.irq = irq;
+    this.square1 = new ChannelSquare(this, true);
+    this.square2 = new ChannelSquare(this, false);
+    this.triangle = new ChannelTriangle(this);
+    this.noise = new ChannelNoise(this);
+    this.dmc = new ChannelDM(this);
+
+    this.frameIrqCounter = null;
+    this.frameIrqCounterMax = 4;
+    this.initCounter = 2048;
+    this.channelEnableValue = null;
+
+    this.sampleRate = 44100;
+
+    this.lengthLookup = null;
+    this.dmcFreqLookup = null;
+    this.noiseWavelengthLookup = null;
+    this.square_table = null;
+    this.tnd_table = null;
+
+    this.frameIrqEnabled = false;
+    this.frameIrqActive = null;
+    this.frameClockNow = null;
+    this.startedPlaying = false;
+    this.recordOutput = false;
+    this.initingHardware = false;
+
+    this.masterFrameCounter = null;
+    this.derivedFrameCounter = null;
+    this.countSequence = null;
+    this.sampleTimer = null;
+    this.frameTime = null;
+    this.sampleTimerMax = null;
+    this.sampleCount = null;
+    this.triValue = 0;
+
+    this.smpSquare1 = null;
+    this.smpSquare2 = null;
+    this.smpTriangle = null;
+    this.smpDmc = null;
+    this.accCount = null;
+
+    this.prevSampleL = 0;
+    this.prevSampleR = 0;
+    this.smpAccumL = 0;
+    this.smpAccumR = 0;
+
+    this.dacRange = 0;
+    this.dcValue = 0;
+
+    this.masterVolume = 256;
+
+    this.stereoPosLSquare1 = null;
+    this.stereoPosLSquare2 = null;
+    this.stereoPosLTriangle = null;
+    this.stereoPosLNoise = null;
+    this.stereoPosLDMC = null;
+    this.stereoPosRSquare1 = null;
+    this.stereoPosRSquare2 = null;
+    this.stereoPosRTriangle = null;
+    this.stereoPosRNoise = null;
+    this.stereoPosRDMC = null;
+
+    this.extraCycles = null;
+
+    this.maxSample = null;
+    this.minSample = null;
+
+    this.panning = [80, 170, 100, 150, 128];
+    this.setPanning(this.panning);
+
+    this.initLengthLookup();
+    this.initDmcFrequencyLookup();
+    this.initNoiseWavelengthLookup();
+    this.initDACtables();
+
+    for (var i = 0; i < 0x14; i++) {
+      if (i === 0x10) {
+        this.writeReg(0x4010, 0x10);
+      } else {
+        this.writeReg(0x4000 + i, 0);
+      }
+    }
+
+    this.reset();
   }
-  dutyCycles = [
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0],
-    [1, 0, 0, 1, 1, 1, 1, 1],
-  ];
-
-  lengthLoadValues = [
-    10,
-    254,
-    20,
-    2,
-    40,
-    4,
-    80,
-    6,
-    160,
-    8,
-    60,
-    10,
-    14,
-    12,
-    26,
-    14,
-    12,
-    16,
-    24,
-    18,
-    48,
-    20,
-    96,
-    22,
-    192,
-    24,
-    72,
-    26,
-    16,
-    28,
-    32,
-    30,
-  ];
-
-  triangleSteps = [
-    15,
-    14,
-    13,
-    12,
-    11,
-    10,
-    9,
-    8,
-    7,
-    6,
-    5,
-    4,
-    3,
-    2,
-    1,
-    0,
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-  ];
-
-  noiseLoadValues = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
-
-  dmcLoadValues = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54];
-
-  output = new Float64Array(29781);
-  outputOffset = 0;
-
-  frameCounter = 0;
-
-  interruptInhibit = false;
-  step5Mode = false;
-
-  enableNoise = false;
-  enableTriangle = false;
-  enablePulse2 = false;
-  enablePulse1 = false;
-
-  p1Timer = 0;
-  p1TimerValue = 0;
-  p1Duty = 0;
-  p1DutyIndex = 0;
-  p1Output = 0;
-  p1CounterHalt = false;
-  p1Counter = 0;
-  p1Volume = 0;
-  p1ConstantVolume = false;
-  p1Decay = 0;
-  p1EnvelopeCounter = 0;
-  p1EnvelopeStart = false;
-  p1SweepEnabled = false;
-  p1SweepPeriod = 0;
-  p1SweepNegate = false;
-  p1SweepShift = 0;
-  p1SweepTimer = 0;
-  p1SweepTarget = 0;
-  p1SweepMuting = true;
-  p1SweepReload = false;
-
-  p2Timer = 0;
-  p2TimerValue = 0;
-  p2Duty = 0;
-  p2DutyIndex = 0;
-  p2Output = 0;
-  p2CounterHalt = false;
-  p2Counter = 0;
-  p2Volume = 0;
-  p2ConstantVolume = false;
-  p2Decay = 0;
-  p2EnvelopeCounter = 0;
-  p2EnvelopeStart = false;
-  p2SweepEnabled = false;
-  p2SweepPeriod = 0;
-  p2SweepNegate = false;
-  p2SweepShift = 0;
-  p2SweepTimer = 0;
-  p2SweepTarget = 0;
-  p2SweepMuting = true;
-  p2SweepReload = false;
-
-  triTimer = 0;
-  triTimerValue = 0;
-  triStepIndex = 0;
-  triOutput = 0;
-  triCounterHalt = false;
-  triCounter = 0;
-  triLinearCounter = 0;
-  triReloadLinear = false;
-  triLinearReload = 0;
-
-  noiseTimer = 0;
-  noiseTimerValue = 0;
-  noiseShift = 1;
-  noiseTonal = false;
-  noiseOutput = 0;
-  noiseCounterHalt = false;
-  noiseCounter = 0;
-  noiseVolume = 0;
-  noiseConstantVolume = false;
-  noiseDecay = 0;
-  noiseEnvelopeCounter = 0;
-  noiseEnvelopeStart = false;
-
-  dmcInterrupt = false;
-  dmcLoop = false;
-  dmcTimer = 0;
-  dmcTimerValue = 0;
-  dmcOutput = 0;
-  dmcSampleAddress = 0xc000;
-  dmcAddress = 0xc000;
-  dmcSample = 0;
-  dmcSampleLength = 0;
-  dmcSampleEmpty = true;
-  dmcBytesLeft = 0;
-  dmcShifter = 0;
-  dmcBitsLeft = 8;
-  dmcSilent = true;
-
   reset() {
-    for (let i = 0; i < this.output.length; i++) {
-      this.output[i] = 0;
-    }
+    this.sampleRate = this.nes.sampleRate;
+    this.sampleTimerMax = Math.floor((1024.0 * 1789772.5 * this.nes.fps) / (this.sampleRate * 60.0));
 
-    this.outputOffset = 0;
+    this.frameTime = Math.floor((14915.0 * this.nes.fps) / 60.0);
 
-    this.frameCounter = 0;
+    this.sampleTimer = 0;
 
-    this.interruptInhibit = false;
-    this.step5Mode = false;
+    this.updateChannelEnable(0);
+    this.masterFrameCounter = 0;
+    this.derivedFrameCounter = 0;
+    this.countSequence = 0;
+    this.sampleCount = 0;
+    this.initCounter = 2048;
+    this.frameIrqEnabled = false;
+    this.initingHardware = false;
 
-    this.enableNoise = false;
-    this.enableTriangle = false;
-    this.enablePulse2 = false;
-    this.enablePulse1 = false;
+    this.resetCounter();
 
-    this.p1Timer = 0;
-    this.p1TimerValue = 0;
-    this.p1Duty = 0;
-    this.p1DutyIndex = 0;
-    this.p1Output = 0;
-    this.p1CounterHalt = false;
-    this.p1Counter = 0;
-    this.p1Volume = 0;
-    this.p1ConstantVolume = false;
-    this.p1Decay = 0;
-    this.p1EnvelopeCounter = 0;
-    this.p1EnvelopeStart = false;
-    this.p1SweepEnabled = false;
-    this.p1SweepPeriod = 0;
-    this.p1SweepNegate = false;
-    this.p1SweepShift = 0;
-    this.p1SweepTimer = 0;
-    this.p1SweepTarget = 0;
-    this.p1SweepMuting = true;
-    this.p1SweepReload = false;
+    this.square1.reset();
+    this.square2.reset();
+    this.triangle.reset();
+    this.noise.reset();
+    this.dmc.reset();
 
-    this.p2Timer = 0;
-    this.p2TimerValue = 0;
-    this.p2Duty = 0;
-    this.p2DutyIndex = 0;
-    this.p2Output = 0;
-    this.p2CounterHalt = false;
-    this.p2Counter = 0;
-    this.p2Volume = 0;
-    this.p2ConstantVolume = false;
-    this.p2Decay = 0;
-    this.p2EnvelopeCounter = 0;
-    this.p2EnvelopeStart = false;
-    this.p2SweepEnabled = false;
-    this.p2SweepPeriod = 0;
-    this.p2SweepNegate = false;
-    this.p2SweepShift = 0;
-    this.p2SweepTimer = 0;
-    this.p2SweepTarget = 0;
-    this.p2SweepMuting = true;
-    this.p2SweepReload = false;
+    this.accCount = 0;
+    this.smpSquare1 = 0;
+    this.smpSquare2 = 0;
+    this.smpTriangle = 0;
+    this.smpDmc = 0;
 
-    this.triTimer = 0;
-    this.triTimerValue = 0;
-    this.triStepIndex = 0;
-    this.triOutput = 0;
-    this.triCounterHalt = false;
-    this.triCounter = 0;
-    this.triLinearCounter = 0;
-    this.triReloadLinear = false;
-    this.triLinearReload = 0;
+    this.frameIrqEnabled = false;
+    this.frameIrqCounterMax = 4;
 
-    this.noiseTimer = 0;
-    this.noiseTimerValue = 0;
-    this.noiseShift = 1;
-    this.noiseTonal = false;
-    this.noiseOutput = 0;
-    this.noiseCounterHalt = false;
-    this.noiseCounter = 0;
-    this.noiseVolume = 0;
-    this.noiseConstantVolume = false;
-    this.noiseDecay = 0;
-    this.noiseEnvelopeCounter = 0;
-    this.noiseEnvelopeStart = false;
+    this.channelEnableValue = 0xff;
+    this.startedPlaying = false;
+    this.prevSampleL = 0;
+    this.prevSampleR = 0;
+    this.smpAccumL = 0;
+    this.smpAccumR = 0;
 
-    this.dmcInterrupt = false;
-    this.dmcLoop = false;
-    this.dmcTimer = 0;
-    this.dmcTimerValue = 0;
-    this.dmcOutput = 0;
-    this.dmcSampleAddress = 0xc000;
-    this.dmcAddress = 0xc000;
-    this.dmcSample = 0;
-    this.dmcSampleLength = 0;
-    this.dmcSampleEmpty = true;
-    this.dmcBytesLeft = 0;
-    this.dmcShifter = 0;
-    this.dmcBitsLeft = 8;
-    this.dmcSilent = true;
-  }
-  cycle() {
-    if ((this.frameCounter === 29830 && !this.step5Mode) || this.frameCounter === 37282) {
-      this.frameCounter = 0;
-    }
-    this.frameCounter++;
-
-    this.handleFrameCounter();
-
-    this.cycleTriangle();
-    this.cyclePulse1();
-    this.cyclePulse2();
-    this.cycleNoise();
-    this.cycleDmc();
-
-    this.output[this.outputOffset++] = this.mix();
-    if (this.outputOffset === 29781) {
-      this.outputOffset = 29780;
-    }
+    this.maxSample = -500000;
+    this.minSample = 500000;
   }
 
-  cyclePulse1() {
-    if (this.p1TimerValue !== 0) {
-      this.p1TimerValue--;
-    } else {
-      this.p1TimerValue = this.p1Timer * 2 + 1;
-      this.p1DutyIndex++;
-      this.p1DutyIndex &= 0x7;
-    }
-    let output = this.dutyCycles[this.p1Duty][this.p1DutyIndex];
-    if (output === 0 || this.p1SweepMuting || this.p1Counter === 0) {
-      this.p1Output = 0;
-    } else {
-      this.p1Output = this.p1ConstantVolume ? this.p1Volume : this.p1Decay;
-    }
-  }
+  readReg(address) {
+    var tmp = 0;
+    tmp |= this.square1.getLengthStatus();
+    tmp |= this.square2.getLengthStatus() << 1;
+    tmp |= this.triangle.getLengthStatus() << 2;
+    tmp |= this.noise.getLengthStatus() << 3;
+    tmp |= this.dmc.getLengthStatus() << 4;
+    tmp |= (this.frameIrqActive && this.frameIrqEnabled ? 1 : 0) << 6;
+    tmp |= this.dmc.getIrqStatus() << 7;
 
-  cyclePulse2() {
-    if (this.p2TimerValue !== 0) {
-      this.p2TimerValue--;
-    } else {
-      this.p2TimerValue = this.p2Timer * 2 + 1;
-      this.p2DutyIndex++;
-      this.p2DutyIndex &= 0x7;
-    }
-    let output = this.dutyCycles[this.p2Duty][this.p2DutyIndex];
-    if (output === 0 || this.p2SweepMuting || this.p2Counter === 0) {
-      this.p2Output = 0;
-    } else {
-      this.p2Output = this.p2ConstantVolume ? this.p2Volume : this.p2Decay;
-    }
-  }
+    this.frameIrqActive = false;
+    this.dmc.irqGenerated = false;
 
-  cycleTriangle() {
-    if (this.triTimerValue !== 0) {
-      this.triTimerValue--;
-    } else {
-      this.triTimerValue = this.triTimer;
-      if (this.triCounter !== 0 && this.triLinearCounter !== 0) {
-        this.triOutput = this.triangleSteps[this.triStepIndex++];
-        if (this.triTimer < 2) {
-          this.triOutput = 7.5;
-        }
-        this.triStepIndex &= 0x1f;
+    return tmp & 0xffff;
+  }
+  writeReg(address, value) {
+    if (address >= 0x4000 && address < 0x4004) {
+      this.square1.writeReg(address, value);
+    } else if (address >= 0x4004 && address < 0x4008) {
+      this.square2.writeReg(address, value);
+    } else if (address >= 0x4008 && address < 0x400c) {
+      this.triangle.writeReg(address, value);
+    } else if (address >= 0x400c && address <= 0x400f) {
+      this.noise.writeReg(address, value);
+    } else if (address === 0x4010) {
+      this.dmc.writeReg(address, value);
+    } else if (address === 0x4011) {
+      this.dmc.writeReg(address, value);
+    } else if (address === 0x4012) {
+      this.dmc.writeReg(address, value);
+    } else if (address === 0x4013) {
+      this.dmc.writeReg(address, value);
+    } else if (address === 0x4015) {
+      this.updateChannelEnable(value);
+
+      if (value !== 0 && this.initCounter > 0) {
+        this.initingHardware = true;
       }
-    }
-  }
 
-  cycleNoise() {
-    if (this.noiseTimerValue !== 0) {
-      this.noiseTimerValue--;
-    } else {
-      this.noiseTimerValue = this.noiseTimer;
-      let feedback = this.noiseShift & 0x1;
-      if (this.noiseTonal) {
-        feedback ^= (this.noiseShift & 0x40) >> 6;
+      this.dmc.writeReg(address, value);
+    } else if (address === 0x4017) {
+      this.countSequence = (value >> 7) & 1;
+      this.masterFrameCounter = 0;
+      this.frameIrqActive = false;
+
+      if (((value >> 6) & 0x1) === 0) {
+        this.frameIrqEnabled = true;
       } else {
-        feedback ^= (this.noiseShift & 0x2) >> 1;
+        this.frameIrqEnabled = false;
       }
-      this.noiseShift >>= 1;
-      this.noiseShift |= feedback << 14;
-    }
-    if (this.noiseCounter === 0 || (this.noiseShift & 0x1) === 1) {
-      this.noiseOutput = 0;
-    } else {
-      this.noiseOutput = this.noiseConstantVolume ? this.noiseVolume : this.noiseDecay;
-    }
-  }
 
-  cycleDmc() {
-    if (this.dmcTimerValue !== 0) {
-      this.dmcTimerValue--;
-    } else {
-      this.dmcTimerValue = this.dmcTimer;
-      if (!this.dmcSilent) {
-        if ((this.dmcShifter & 0x1) === 0) {
-          if (this.dmcOutput >= 2) {
-            this.dmcOutput -= 2;
-          }
-        } else {
-          if (this.dmcOutput <= 125) {
-            this.dmcOutput += 2;
-          }
-        }
-      }
-      this.dmcShifter >>= 1;
-      this.dmcBitsLeft--;
-      if (this.dmcBitsLeft === 0) {
-        this.dmcBitsLeft = 8;
-        if (this.dmcSampleEmpty) {
-          this.dmcSilent = true;
-        } else {
-          this.dmcSilent = false;
-          this.dmcShifter = this.dmcSample;
-          this.dmcSampleEmpty = true;
-        }
-      }
-    }
-    if (this.dmcBytesLeft > 0 && this.dmcSampleEmpty) {
-      this.dmcSampleEmpty = false;
-      this.dmcSample = this.mem.read(this.dmcAddress);
-      this.dmcAddress++;
-      if (this.dmcAddress === 0x10000) {
-        this.dmcAddress = 0x8000;
-      }
-      this.dmcBytesLeft--;
-      if (this.dmcBytesLeft === 0 && this.dmcLoop) {
-        this.dmcBytesLeft = this.dmcSampleLength;
-        this.dmcAddress = this.dmcSampleAddress;
-      } else if (this.dmcBytesLeft === 0 && this.dmcInterrupt) {
-        this.irq.dmcIrqWanted = true;
-      }
-    }
-  }
-
-  updateSweepP1() {
-    let change = this.p1Timer >> this.p1SweepShift;
-    if (this.p1SweepNegate) {
-      change = -change - 1;
-    }
-    this.p1SweepTarget = this.p1Timer + change;
-    if (this.p1SweepTarget > 0x7ff || this.p1Timer < 8) {
-      this.p1SweepMuting = true;
-    } else {
-      this.p1SweepMuting = false;
-    }
-  }
-
-  updateSweepP2() {
-    let change = this.p2Timer >> this.p2SweepShift;
-    if (this.p2SweepNegate) {
-      change = -change;
-    }
-    this.p2SweepTarget = this.p2Timer + change;
-    if (this.p2SweepTarget > 0x7ff || this.p2Timer < 8) {
-      this.p2SweepMuting = true;
-    } else {
-      this.p2SweepMuting = false;
-    }
-  }
-
-  clockQuarter() {
-    if (this.triReloadLinear) {
-      this.triLinearCounter = this.triLinearReload;
-    } else if (this.triLinearCounter !== 0) {
-      this.triLinearCounter--;
-    }
-    if (!this.triCounterHalt) {
-      this.triReloadLinear = false;
-    }
-
-    if (!this.p1EnvelopeStart) {
-      if (this.p1EnvelopeCounter !== 0) {
-        this.p1EnvelopeCounter--;
+      if (this.countSequence === 0) {
+        this.frameIrqCounterMax = 4;
+        this.derivedFrameCounter = 4;
       } else {
-        this.p1EnvelopeCounter = this.p1Volume;
-        if (this.p1Decay !== 0) {
-          this.p1Decay--;
-        } else {
-          if (this.p1CounterHalt) {
-            this.p1Decay = 15;
+        this.frameIrqCounterMax = 5;
+        this.derivedFrameCounter = 0;
+        this.frameCounterTick();
+      }
+    }
+  }
+  resetCounter() {
+    if (this.countSequence === 0) {
+      this.derivedFrameCounter = 4;
+    } else {
+      this.derivedFrameCounter = 0;
+    }
+  }
+
+  updateChannelEnable(value) {
+    this.channelEnableValue = value & 0xffff;
+    this.square1.setEnabled((value & 1) !== 0);
+    this.square2.setEnabled((value & 2) !== 0);
+    this.triangle.setEnabled((value & 4) !== 0);
+    this.noise.setEnabled((value & 8) !== 0);
+    this.dmc.setEnabled((value & 16) !== 0);
+  }
+
+  clockFrameCounter(nCycles) {
+    if (this.initCounter > 0) {
+      if (this.initingHardware) {
+        this.initCounter -= nCycles;
+        if (this.initCounter <= 0) {
+          this.initingHardware = false;
+        }
+        return;
+      }
+    }
+
+    nCycles += this.extraCycles;
+    var maxCycles = this.sampleTimerMax - this.sampleTimer;
+    if (nCycles << 10 > maxCycles) {
+      this.extraCycles = ((nCycles << 10) - maxCycles) >> 10;
+      nCycles -= this.extraCycles;
+    } else {
+      this.extraCycles = 0;
+    }
+
+    var dmc = this.dmc;
+    var triangle = this.triangle;
+    var square1 = this.square1;
+    var square2 = this.square2;
+    var noise = this.noise;
+
+    if (dmc.isEnabled) {
+      dmc.shiftCounter -= nCycles << 3;
+      while (dmc.shiftCounter <= 0 && dmc.dmaFrequency > 0) {
+        dmc.shiftCounter += dmc.dmaFrequency;
+        dmc.clockDmc();
+      }
+    }
+
+    if (triangle.progTimerMax > 0) {
+      triangle.progTimerCount -= nCycles;
+      while (triangle.progTimerCount <= 0) {
+        triangle.progTimerCount += triangle.progTimerMax + 1;
+        if (triangle.linearCounter > 0 && triangle.lengthCounter > 0) {
+          triangle.triangleCounter++;
+          triangle.triangleCounter &= 0x1f;
+
+          if (triangle.isEnabled) {
+            if (triangle.triangleCounter >= 0x10) {
+              triangle.sampleValue = triangle.triangleCounter & 0xf;
+            } else {
+              triangle.sampleValue = 0xf - (triangle.triangleCounter & 0xf);
+            }
+            triangle.sampleValue <<= 4;
           }
         }
       }
-    } else {
-      this.p1EnvelopeStart = false;
-      this.p1Decay = 15;
-      this.p1EnvelopeCounter = this.p1Volume;
     }
 
-    if (!this.p2EnvelopeStart) {
-      if (this.p2EnvelopeCounter !== 0) {
-        this.p2EnvelopeCounter--;
-      } else {
-        this.p2EnvelopeCounter = this.p2Volume;
-        if (this.p2Decay !== 0) {
-          this.p2Decay--;
-        } else {
-          if (this.p2CounterHalt) {
-            this.p2Decay = 15;
+    square1.progTimerCount -= nCycles;
+    if (square1.progTimerCount <= 0) {
+      square1.progTimerCount += (square1.progTimerMax + 1) << 1;
+
+      square1.squareCounter++;
+      square1.squareCounter &= 0x7;
+      square1.updateSampleValue();
+    }
+
+    square2.progTimerCount -= nCycles;
+    if (square2.progTimerCount <= 0) {
+      square2.progTimerCount += (square2.progTimerMax + 1) << 1;
+
+      square2.squareCounter++;
+      square2.squareCounter &= 0x7;
+      square2.updateSampleValue();
+    }
+
+    var acc_c = nCycles;
+    if (noise.progTimerCount - acc_c > 0) {
+      noise.progTimerCount -= acc_c;
+      noise.accCount += acc_c;
+      noise.accValue += acc_c * noise.sampleValue;
+    } else {
+      while (acc_c-- > 0) {
+        if (--noise.progTimerCount <= 0 && noise.progTimerMax > 0) {
+          noise.shiftReg <<= 1;
+          noise.tmp = ((noise.shiftReg << (noise.randomMode === 0 ? 1 : 6)) ^ noise.shiftReg) & 0x8000;
+          if (noise.tmp !== 0) {
+            noise.shiftReg |= 0x01;
+            noise.randomBit = 0;
+            noise.sampleValue = 0;
+          } else {
+            noise.randomBit = 1;
+            if (noise.isEnabled && noise.lengthCounter > 0) {
+              noise.sampleValue = noise.masterVolume;
+            } else {
+              noise.sampleValue = 0;
+            }
           }
+
+          noise.progTimerCount += noise.progTimerMax;
         }
+
+        noise.accValue += noise.sampleValue;
+        noise.accCount++;
       }
-    } else {
-      this.p2EnvelopeStart = false;
-      this.p2Decay = 15;
-      this.p2EnvelopeCounter = this.p2Volume;
     }
 
-    if (!this.noiseEnvelopeStart) {
-      if (this.noiseEnvelopeCounter !== 0) {
-        this.noiseEnvelopeCounter--;
-      } else {
-        this.noiseEnvelopeCounter = this.noiseVolume;
-        if (this.noiseDecay !== 0) {
-          this.noiseDecay--;
-        } else {
-          if (this.noiseCounterHalt) {
-            this.noiseDecay = 15;
-          }
-        }
+    if (this.frameIrqEnabled && this.frameIrqActive) {
+      this.nes.irq.irqWanted = true;
+    }
+
+    this.masterFrameCounter += nCycles << 1;
+    if (this.masterFrameCounter >= this.frameTime) {
+      this.masterFrameCounter -= this.frameTime;
+      this.frameCounterTick();
+    }
+
+    this.accSample(nCycles);
+
+    this.sampleTimer += nCycles << 10;
+    if (this.sampleTimer >= this.sampleTimerMax) {
+      this.sample();
+      this.sampleTimer -= this.sampleTimerMax;
+    }
+  }
+  accSample(cycles) {
+    if (this.triangle.sampleCondition) {
+      this.triValue = Math.floor((this.triangle.progTimerCount << 4) / (this.triangle.progTimerMax + 1));
+      if (this.triValue > 16) {
+        this.triValue = 16;
       }
-    } else {
-      this.noiseEnvelopeStart = false;
-      this.noiseDecay = 15;
-      this.noiseEnvelopeCounter = this.noiseVolume;
-    }
-  }
-
-  clockHalf() {
-    if (!this.p1CounterHalt && this.p1Counter !== 0) {
-      this.p1Counter--;
-    }
-    if (!this.p2CounterHalt && this.p2Counter !== 0) {
-      this.p2Counter--;
-    }
-    if (!this.triCounterHalt && this.triCounter !== 0) {
-      this.triCounter--;
-    }
-    if (!this.noiseCounterHalt && this.noiseCounter !== 0) {
-      this.noiseCounter--;
-    }
-
-    if (this.p1SweepTimer === 0 && this.p1SweepEnabled && !this.p1SweepMuting && this.p1SweepShift > 0) {
-      this.p1Timer = this.p1SweepTarget;
-      this.updateSweepP1();
-    }
-    if (this.p1SweepTimer === 0 || this.p1SweepReload) {
-      this.p1SweepTimer = this.p1SweepPeriod;
-      this.p1SweepReload = false;
-    } else {
-      this.p1SweepTimer--;
-    }
-
-    if (this.p2SweepTimer === 0 && this.p2SweepEnabled && !this.p2SweepMuting && this.p2SweepShift > 0) {
-      this.p2Timer = this.p2SweepTarget;
-      this.updateSweepP2();
-    }
-    if (this.p2SweepTimer === 0 || this.p2SweepReload) {
-      this.p2SweepTimer = this.p2SweepPeriod;
-      this.p2SweepReload = false;
-    } else {
-      this.p2SweepTimer--;
-    }
-  }
-
-  mix() {
-    let tnd = 0.00851 * this.triOutput + 0.00494 * this.noiseOutput + 0.00335 * this.dmcOutput;
-    let pulse = 0.00752 * (this.p1Output + this.p2Output);
-    return tnd + pulse;
-  }
-
-  handleFrameCounter() {
-    if (this.frameCounter === 7457) {
-      this.clockQuarter();
-    } else if (this.frameCounter === 14913) {
-      this.clockQuarter();
-      this.clockHalf();
-    } else if (this.frameCounter === 22371) {
-      this.clockQuarter();
-    } else if (this.frameCounter === 29829 && !this.step5Mode) {
-      this.clockQuarter();
-      this.clockHalf();
-      if (!this.interruptInhibit) {
-        this.irq.frameIrqWanted = true;
+      if (this.triangle.triangleCounter >= 16) {
+        this.triValue = 16 - this.triValue;
       }
-    } else if (this.frameCounter === 37281) {
-      this.clockQuarter();
-      this.clockHalf();
+
+      this.triValue += this.triangle.sampleValue;
+    }
+
+    if (cycles === 2) {
+      this.smpTriangle += this.triValue << 1;
+      this.smpDmc += this.dmc.sample << 1;
+      this.smpSquare1 += this.square1.sampleValue << 1;
+      this.smpSquare2 += this.square2.sampleValue << 1;
+      this.accCount += 2;
+    } else if (cycles === 4) {
+      this.smpTriangle += this.triValue << 2;
+      this.smpDmc += this.dmc.sample << 2;
+      this.smpSquare1 += this.square1.sampleValue << 2;
+      this.smpSquare2 += this.square2.sampleValue << 2;
+      this.accCount += 4;
+    } else {
+      this.smpTriangle += cycles * this.triValue;
+      this.smpDmc += cycles * this.dmc.sample;
+      this.smpSquare1 += cycles * this.square1.sampleValue;
+      this.smpSquare2 += cycles * this.square2.sampleValue;
+      this.accCount += cycles;
+    }
+  }
+  frameCounterTick() {
+    this.derivedFrameCounter++;
+    if (this.derivedFrameCounter >= this.frameIrqCounterMax) {
+      this.derivedFrameCounter = 0;
+    }
+
+    if (this.derivedFrameCounter === 1 || this.derivedFrameCounter === 3) {
+      this.triangle.clockLengthCounter();
+      this.square1.clockLengthCounter();
+      this.square2.clockLengthCounter();
+      this.noise.clockLengthCounter();
+      this.square1.clockSweep();
+      this.square2.clockSweep();
+    }
+
+    if (this.derivedFrameCounter >= 0 && this.derivedFrameCounter < 4) {
+      this.square1.clockEnvDecay();
+      this.square2.clockEnvDecay();
+      this.noise.clockEnvDecay();
+      this.triangle.clockLinearCounter();
+    }
+
+    if (this.derivedFrameCounter === 3 && this.countSequence === 0) {
+      this.frameIrqActive = true;
     }
   }
 
-  getOutput() {
-    let ret = [this.outputOffset, this.output];
-    this.outputOffset = 0;
-    return ret;
+  sample() {
+    var sq_index, tnd_index;
+
+    if (this.accCount > 0) {
+      this.smpSquare1 <<= 4;
+      this.smpSquare1 = Math.floor(this.smpSquare1 / this.accCount);
+
+      this.smpSquare2 <<= 4;
+      this.smpSquare2 = Math.floor(this.smpSquare2 / this.accCount);
+
+      this.smpTriangle = Math.floor(this.smpTriangle / this.accCount);
+
+      this.smpDmc <<= 4;
+      this.smpDmc = Math.floor(this.smpDmc / this.accCount);
+
+      this.accCount = 0;
+    } else {
+      this.smpSquare1 = this.square1.sampleValue << 4;
+      this.smpSquare2 = this.square2.sampleValue << 4;
+      this.smpTriangle = this.triangle.sampleValue;
+      this.smpDmc = this.dmc.sample << 4;
+    }
+
+    var smpNoise = Math.floor((this.noise.accValue << 4) / this.noise.accCount);
+    this.noise.accValue = smpNoise >> 4;
+    this.noise.accCount = 1;
+
+    sq_index = (this.smpSquare1 * this.stereoPosLSquare1 + this.smpSquare2 * this.stereoPosLSquare2) >> 8;
+    tnd_index =
+      (3 * this.smpTriangle * this.stereoPosLTriangle +
+        (smpNoise << 1) * this.stereoPosLNoise +
+        this.smpDmc * this.stereoPosLDMC) >>
+      8;
+    if (sq_index >= this.square_table.length) {
+      sq_index = this.square_table.length - 1;
+    }
+    if (tnd_index >= this.tnd_table.length) {
+      tnd_index = this.tnd_table.length - 1;
+    }
+    var sampleValueL = this.square_table[sq_index] + this.tnd_table[tnd_index] - this.dcValue;
+
+    sq_index = (this.smpSquare1 * this.stereoPosRSquare1 + this.smpSquare2 * this.stereoPosRSquare2) >> 8;
+    tnd_index =
+      (3 * this.smpTriangle * this.stereoPosRTriangle +
+        (smpNoise << 1) * this.stereoPosRNoise +
+        this.smpDmc * this.stereoPosRDMC) >>
+      8;
+    if (sq_index >= this.square_table.length) {
+      sq_index = this.square_table.length - 1;
+    }
+    if (tnd_index >= this.tnd_table.length) {
+      tnd_index = this.tnd_table.length - 1;
+    }
+    var sampleValueR = this.square_table[sq_index] + this.tnd_table[tnd_index] - this.dcValue;
+
+    var smpDiffL = sampleValueL - this.prevSampleL;
+    this.prevSampleL += smpDiffL;
+    this.smpAccumL += smpDiffL - (this.smpAccumL >> 10);
+    sampleValueL = this.smpAccumL;
+
+    var smpDiffR = sampleValueR - this.prevSampleR;
+    this.prevSampleR += smpDiffR;
+    this.smpAccumR += smpDiffR - (this.smpAccumR >> 10);
+    sampleValueR = this.smpAccumR;
+
+    if (sampleValueL > this.maxSample) {
+      this.maxSample = sampleValueL;
+    }
+    if (sampleValueL < this.minSample) {
+      this.minSample = sampleValueL;
+    }
+
+    this.nes.onAudioSample(sampleValueL / 32768, sampleValueR / 32768);
+
+    this.smpSquare1 = 0;
+    this.smpSquare2 = 0;
+    this.smpTriangle = 0;
+    this.smpDmc = 0;
   }
-  read(adr) {
-    if (adr === 0x4015) {
-      let ret = 0;
-      ret |= this.p1Counter > 0 ? 0x1 : 0;
-      ret |= this.p2Counter > 0 ? 0x2 : 0;
-      ret |= this.triCounter > 0 ? 0x4 : 0;
-      ret |= this.noiseCounter > 0 ? 0x8 : 0;
-      ret |= this.dmcBytesLeft > 0 ? 0x10 : 0;
-      ret |= this.irq.frameIrqWanted ? 0x40 : 0;
-      ret |= this.irq.dmcIrqWanted ? 0x80 : 0;
-      this.irq.frameIrqWanted = false;
-      return ret;
+  getLengthMax(value) {
+    return this.lengthLookup[value >> 3];
+  }
+  getDmcFrequency(value) {
+    if (value >= 0 && value < 0x10) {
+      return this.dmcFreqLookup[value];
     }
     return 0;
   }
+  getNoiseWaveLength(value) {
+    if (value >= 0 && value < 0x10) {
+      return this.noiseWavelengthLookup[value];
+    }
+    return 0;
+  }
+  setPanning(pos) {
+    for (var i = 0; i < 5; i++) {
+      this.panning[i] = pos[i];
+    }
+    this.updateStereoPos();
+  }
+  setMasterVolume(value) {
+    if (value < 0) {
+      value = 0;
+    }
+    if (value > 256) {
+      value = 256;
+    }
+    this.masterVolume = value;
+    this.updateStereoPos();
+  }
+  updateStereoPos() {
+    this.stereoPosLSquare1 = (this.panning[0] * this.masterVolume) >> 8;
+    this.stereoPosLSquare2 = (this.panning[1] * this.masterVolume) >> 8;
+    this.stereoPosLTriangle = (this.panning[2] * this.masterVolume) >> 8;
+    this.stereoPosLNoise = (this.panning[3] * this.masterVolume) >> 8;
+    this.stereoPosLDMC = (this.panning[4] * this.masterVolume) >> 8;
 
-  write(adr, value) {
-    switch (adr) {
-      case 0x4000: {
-        this.p1Duty = (value & 0xc0) >> 6;
-        this.p1Volume = value & 0xf;
-        this.p1CounterHalt = (value & 0x20) > 0;
-        this.p1ConstantVolume = (value & 0x10) > 0;
-        break;
-      }
-      case 0x4001: {
-        this.p1SweepEnabled = (value & 0x80) > 0;
-        this.p1SweepPeriod = (value & 0x70) >> 4;
-        this.p1SweepNegate = (value & 0x08) > 0;
-        this.p1SweepShift = value & 0x7;
-        this.p1SweepReload = true;
-        this.updateSweepP1();
-        break;
-      }
-      case 0x4002: {
-        this.p1Timer &= 0x700;
-        this.p1Timer |= value;
-        this.updateSweepP1();
-        break;
-      }
-      case 0x4003: {
-        this.p1Timer &= 0xff;
-        this.p1Timer |= (value & 0x7) << 8;
-        this.p1DutyIndex = 0;
-        if (this.enablePulse1) {
-          this.p1Counter = this.lengthLoadValues[(value & 0xf8) >> 3];
-        }
-        this.p1EnvelopeStart = true;
-        this.updateSweepP1();
-        break;
-      }
-      case 0x4004: {
-        this.p2Duty = (value & 0xc0) >> 6;
-        this.p2Volume = value & 0xf;
-        this.p2CounterHalt = (value & 0x20) > 0;
-        this.p2ConstantVolume = (value & 0x10) > 0;
-        break;
-      }
-      case 0x4005: {
-        this.p2SweepEnabled = (value & 0x80) > 0;
-        this.p2SweepPeriod = (value & 0x70) >> 4;
-        this.p2SweepNegate = (value & 0x08) > 0;
-        this.p2SweepShift = value & 0x7;
-        this.p2SweepReload = true;
-        this.updateSweepP2();
-        break;
-      }
-      case 0x4006: {
-        this.p2Timer &= 0x700;
-        this.p2Timer |= value;
-        this.updateSweepP2();
-        break;
-      }
-      case 0x4007: {
-        this.p2Timer &= 0xff;
-        this.p2Timer |= (value & 0x7) << 8;
-        this.p2DutyIndex = 0;
-        if (this.enablePulse2) {
-          this.p2Counter = this.lengthLoadValues[(value & 0xf8) >> 3];
-        }
-        this.p2EnvelopeStart = true;
-        this.updateSweepP2();
-        break;
-      }
-      case 0x4008: {
-        this.triCounterHalt = (value & 0x80) > 0;
-        this.triLinearReload = value & 0x7f;
+    this.stereoPosRSquare1 = this.masterVolume - this.stereoPosLSquare1;
+    this.stereoPosRSquare2 = this.masterVolume - this.stereoPosLSquare2;
+    this.stereoPosRTriangle = this.masterVolume - this.stereoPosLTriangle;
+    this.stereoPosRNoise = this.masterVolume - this.stereoPosLNoise;
+    this.stereoPosRDMC = this.masterVolume - this.stereoPosLDMC;
+  }
+  initLengthLookup() {
+    this.lengthLookup = [
+      0x0a,
+      0xfe,
+      0x14,
+      0x02,
+      0x28,
+      0x04,
+      0x50,
+      0x06,
+      0xa0,
+      0x08,
+      0x3c,
+      0x0a,
+      0x0e,
+      0x0c,
+      0x1a,
+      0x0e,
+      0x0c,
+      0x10,
+      0x18,
+      0x12,
+      0x30,
+      0x14,
+      0x60,
+      0x16,
+      0xc0,
+      0x18,
+      0x48,
+      0x1a,
+      0x10,
+      0x1c,
+      0x20,
+      0x1e,
+    ];
+  }
+  initDmcFrequencyLookup() {
+    this.dmcFreqLookup = new Array(16);
 
-        break;
-      }
-      case 0x400a: {
-        this.triTimer &= 0x700;
-        this.triTimer |= value;
-        break;
-      }
-      case 0x400b: {
-        this.triTimer &= 0xff;
-        this.triTimer |= (value & 0x7) << 8;
-        if (this.enableTriangle) {
-          this.triCounter = this.lengthLoadValues[(value & 0xf8) >> 3];
-        }
-        this.triReloadLinear = true;
-        break;
-      }
-      case 0x400c: {
-        this.noiseCounterHalt = (value & 0x20) > 0;
-        this.noiseConstantVolume = (value & 0x10) > 0;
-        this.noiseVolume = value & 0xf;
-        break;
-      }
-      case 0x400e: {
-        this.noiseTonal = (value & 0x80) > 0;
-        this.noiseTimer = this.noiseLoadValues[value & 0xf] - 1;
-        break;
-      }
-      case 0x400f: {
-        if (this.enableNoise) {
-          this.noiseCounter = this.lengthLoadValues[(value & 0xf8) >> 3];
-        }
-        this.noiseEnvelopeStart = true;
-        break;
-      }
-      case 0x4010: {
-        this.dmcInterrupt = (value & 0x80) > 0;
-        this.dmcLoop = (value & 0x40) > 0;
-        this.dmcTimer = this.dmcLoadValues[value & 0xf] - 1;
-        if (!this.dmcInterrupt) {
-          this.irq.dmcIrqWanted = false;
-        }
-        break;
-      }
-      case 0x4011: {
-        this.dmcOutput = value & 0x7f;
-        break;
-      }
-      case 0x4012: {
-        this.dmcSampleAddress = 0xc000 | (value << 6);
-        break;
-      }
-      case 0x4013: {
-        this.dmcSampleLength = (value << 4) + 1;
-        break;
-      }
-      case 0x4015: {
-        this.enableNoise = (value & 0x08) > 0;
-        this.enableTriangle = (value & 0x04) > 0;
-        this.enablePulse2 = (value & 0x02) > 0;
-        this.enablePulse1 = (value & 0x01) > 0;
-        if (!this.enablePulse1) {
-          this.p1Counter = 0;
-        }
-        if (!this.enablePulse2) {
-          this.p2Counter = 0;
-        }
-        if (!this.enableTriangle) {
-          this.triCounter = 0;
-        }
-        if (!this.enableNoise) {
-          this.noiseCounter = 0;
-        }
-        if ((value & 0x10) > 0) {
-          if (this.dmcBytesLeft === 0) {
-            this.dmcBytesLeft = this.dmcSampleLength;
-            this.dmcAddress = this.dmcSampleAddress;
-          }
-        } else {
-          this.dmcBytesLeft = 0;
-        }
-        this.irq.dmcIrqWanted = false;
-        break;
-      }
-      case 0x4017: {
-        this.step5Mode = (value & 0x80) > 0;
-        this.interruptInhibit = (value & 0x40) > 0;
-        if (this.interruptInhibit) {
-          this.irq.frameIrqWanted = false;
-        }
-        this.frameCounter = 0;
-        if (this.step5Mode) {
-          this.clockQuarter();
-          this.clockHalf();
-        }
-        break;
-      }
-      default: {
-        break;
+    this.dmcFreqLookup[0x0] = 0xd60;
+    this.dmcFreqLookup[0x1] = 0xbe0;
+    this.dmcFreqLookup[0x2] = 0xaa0;
+    this.dmcFreqLookup[0x3] = 0xa00;
+    this.dmcFreqLookup[0x4] = 0x8f0;
+    this.dmcFreqLookup[0x5] = 0x7f0;
+    this.dmcFreqLookup[0x6] = 0x710;
+    this.dmcFreqLookup[0x7] = 0x6b0;
+    this.dmcFreqLookup[0x8] = 0x5f0;
+    this.dmcFreqLookup[0x9] = 0x500;
+    this.dmcFreqLookup[0xa] = 0x470;
+    this.dmcFreqLookup[0xb] = 0x400;
+    this.dmcFreqLookup[0xc] = 0x350;
+    this.dmcFreqLookup[0xd] = 0x2a0;
+    this.dmcFreqLookup[0xe] = 0x240;
+    this.dmcFreqLookup[0xf] = 0x1b0;
+  }
+  initNoiseWavelengthLookup() {
+    this.noiseWavelengthLookup = new Array(16);
+
+    this.noiseWavelengthLookup[0x0] = 0x004;
+    this.noiseWavelengthLookup[0x1] = 0x008;
+    this.noiseWavelengthLookup[0x2] = 0x010;
+    this.noiseWavelengthLookup[0x3] = 0x020;
+    this.noiseWavelengthLookup[0x4] = 0x040;
+    this.noiseWavelengthLookup[0x5] = 0x060;
+    this.noiseWavelengthLookup[0x6] = 0x080;
+    this.noiseWavelengthLookup[0x7] = 0x0a0;
+    this.noiseWavelengthLookup[0x8] = 0x0ca;
+    this.noiseWavelengthLookup[0x9] = 0x0fe;
+    this.noiseWavelengthLookup[0xa] = 0x17c;
+    this.noiseWavelengthLookup[0xb] = 0x1fc;
+    this.noiseWavelengthLookup[0xc] = 0x2fa;
+    this.noiseWavelengthLookup[0xd] = 0x3f8;
+    this.noiseWavelengthLookup[0xe] = 0x7f2;
+    this.noiseWavelengthLookup[0xf] = 0xfe4;
+  }
+  initDACtables() {
+    var value, ival, i;
+    var max_sqr = 0;
+    var max_tnd = 0;
+
+    this.square_table = new Array(32 * 16);
+    this.tnd_table = new Array(204 * 16);
+
+    for (i = 0; i < 32 * 16; i++) {
+      value = 95.52 / (8128.0 / (i / 16.0) + 100.0);
+      value *= 0.98411;
+      value *= 50000.0;
+      ival = Math.floor(value);
+
+      this.square_table[i] = ival;
+      if (ival > max_sqr) {
+        max_sqr = ival;
       }
     }
+
+    for (i = 0; i < 204 * 16; i++) {
+      value = 163.67 / (24329.0 / (i / 16.0) + 100.0);
+      value *= 0.98411;
+      value *= 50000.0;
+      ival = Math.floor(value);
+
+      this.tnd_table[i] = ival;
+      if (ival > max_tnd) {
+        max_tnd = ival;
+      }
+    }
+
+    this.dacRange = max_sqr + max_tnd;
+    this.dcValue = this.dacRange / 2;
+  }
+}
+
+class ChannelDM {
+  constructor(papu) {
+    this.papu = papu;
+
+    this.MODE_NORMAL = 0;
+    this.MODE_LOOP = 1;
+    this.MODE_IRQ = 2;
+
+    this.isEnabled = null;
+    this.hasSample = null;
+    this.irqGenerated = false;
+
+    this.playMode = null;
+    this.dmaFrequency = null;
+    this.dmaCounter = null;
+    this.deltaCounter = null;
+    this.playStartAddress = null;
+    this.playAddress = null;
+    this.playLength = null;
+    this.playLengthCounter = null;
+    this.shiftCounter = null;
+    this.reg4012 = null;
+    this.reg4013 = null;
+    this.sample = null;
+    this.dacLsb = null;
+    this.data = null;
+
+    this.reset();
+  }
+  clockDmc() {
+    if (this.hasSample) {
+      if ((this.data & 1) === 0) {
+        if (this.deltaCounter > 0) {
+          this.deltaCounter--;
+        }
+      } else {
+        if (this.deltaCounter < 63) {
+          this.deltaCounter++;
+        }
+      }
+
+      this.sample = this.isEnabled ? (this.deltaCounter << 1) + this.dacLsb : 0;
+
+      this.data >>= 1;
+    }
+
+    this.dmaCounter--;
+    if (this.dmaCounter <= 0) {
+      this.hasSample = false;
+      this.endOfSample();
+      this.dmaCounter = 8;
+    }
+
+    if (this.irqGenerated) {
+      this.nes.cpu.requestIrq(this.nes.cpu.IRQ_NORMAL);
+    }
+  }
+  endOfSample() {
+    if (this.playLengthCounter === 0 && this.playMode === this.MODE_LOOP) {
+      this.playAddress = this.playStartAddress;
+      this.playLengthCounter = this.playLength;
+    }
+
+    if (this.playLengthCounter > 0) {
+      this.nextSample();
+
+      if (this.playLengthCounter === 0) {
+        if (this.playMode === this.MODE_IRQ) {
+          this.irqGenerated = true;
+        }
+      }
+    }
+  }
+  nextSample() {
+    this.data = this.papu.nes.mem.Get(this.playAddress);
+    this.papu.nes.cpu.CPUClock += 4;
+
+    this.playLengthCounter--;
+    this.playAddress++;
+    if (this.playAddress > 0xffff) {
+      this.playAddress = 0x8000;
+    }
+
+    this.hasSample = true;
+  }
+  writeReg(address, value) {
+    if (address === 0x4010) {
+      if (value >> 6 === 0) {
+        this.playMode = this.MODE_NORMAL;
+      } else if (((value >> 6) & 1) === 1) {
+        this.playMode = this.MODE_LOOP;
+      } else if (value >> 6 === 2) {
+        this.playMode = this.MODE_IRQ;
+      }
+
+      if ((value & 0x80) === 0) {
+        this.irqGenerated = false;
+      }
+
+      this.dmaFrequency = this.papu.getDmcFrequency(value & 0xf);
+    } else if (address === 0x4011) {
+      this.deltaCounter = (value >> 1) & 63;
+      this.dacLsb = value & 1;
+      this.sample = (this.deltaCounter << 1) + this.dacLsb;
+    } else if (address === 0x4012) {
+      this.playStartAddress = (value << 6) | 0x0c000;
+      this.playAddress = this.playStartAddress;
+      this.reg4012 = value;
+    } else if (address === 0x4013) {
+      this.playLength = (value << 4) + 1;
+      this.playLengthCounter = this.playLength;
+      this.reg4013 = value;
+    } else if (address === 0x4015) {
+      if (((value >> 4) & 1) === 0) {
+        this.playLengthCounter = 0;
+      } else {
+        this.playAddress = this.playStartAddress;
+        this.playLengthCounter = this.playLength;
+      }
+      this.irqGenerated = false;
+    }
+  }
+  setEnabled(value) {
+    if (!this.isEnabled && value) {
+      this.playLengthCounter = this.playLength;
+    }
+    this.isEnabled = value;
+  }
+  getLengthStatus() {
+    return this.playLengthCounter === 0 || !this.isEnabled ? 0 : 1;
+  }
+  getIrqStatus() {
+    return this.irqGenerated ? 1 : 0;
+  }
+  reset() {
+    this.isEnabled = false;
+    this.irqGenerated = false;
+    this.playMode = this.MODE_NORMAL;
+    this.dmaFrequency = 0;
+    this.dmaCounter = 0;
+    this.deltaCounter = 0;
+    this.playStartAddress = 0;
+    this.playAddress = 0;
+    this.playLength = 0;
+    this.playLengthCounter = 0;
+    this.sample = 0;
+    this.dacLsb = 0;
+    this.shiftCounter = 0;
+    this.reg4012 = 0;
+    this.reg4013 = 0;
+    this.data = 0;
+  }
+}
+
+class ChannelNoise {
+  constructor(papu) {
+    this.papu = papu;
+
+    this.isEnabled = null;
+    this.envDecayDisable = null;
+    this.envDecayLoopEnable = null;
+    this.lengthCounterEnable = null;
+    this.envReset = null;
+    this.shiftNow = null;
+
+    this.lengthCounter = null;
+    this.progTimerCount = null;
+    this.progTimerMax = null;
+    this.envDecayRate = null;
+    this.envDecayCounter = null;
+    this.envVolume = null;
+    this.masterVolume = null;
+    this.shiftReg = 1 << 14;
+    this.randomBit = null;
+    this.randomMode = null;
+    this.sampleValue = null;
+    this.accValue = 0;
+    this.accCount = 1;
+    this.tmp = null;
+
+    this.reset();
+  }
+  reset() {
+    this.progTimerCount = 0;
+    this.progTimerMax = 0;
+    this.isEnabled = false;
+    this.lengthCounter = 0;
+    this.lengthCounterEnable = false;
+    this.envDecayDisable = false;
+    this.envDecayLoopEnable = false;
+    this.shiftNow = false;
+    this.envDecayRate = 0;
+    this.envDecayCounter = 0;
+    this.envVolume = 0;
+    this.masterVolume = 0;
+    this.shiftReg = 1;
+    this.randomBit = 0;
+    this.randomMode = 0;
+    this.sampleValue = 0;
+    this.tmp = 0;
+  }
+  clockLengthCounter() {
+    if (this.lengthCounterEnable && this.lengthCounter > 0) {
+      this.lengthCounter--;
+      if (this.lengthCounter === 0) {
+        this.updateSampleValue();
+      }
+    }
+  }
+  clockEnvDecay() {
+    if (this.envReset) {
+      this.envReset = false;
+      this.envDecayCounter = this.envDecayRate + 1;
+      this.envVolume = 0xf;
+    } else if (--this.envDecayCounter <= 0) {
+      this.envDecayCounter = this.envDecayRate + 1;
+      if (this.envVolume > 0) {
+        this.envVolume--;
+      } else {
+        this.envVolume = this.envDecayLoopEnable ? 0xf : 0;
+      }
+    }
+    if (this.envDecayDisable) {
+      this.masterVolume = this.envDecayRate;
+    } else {
+      this.masterVolume = this.envVolume;
+    }
+    this.updateSampleValue();
+  }
+  updateSampleValue() {
+    if (this.isEnabled && this.lengthCounter > 0) {
+      this.sampleValue = this.randomBit * this.masterVolume;
+    }
+  }
+  writeReg(address, value) {
+    if (address === 0x400c) {
+      this.envDecayDisable = (value & 0x10) !== 0;
+      this.envDecayRate = value & 0xf;
+      this.envDecayLoopEnable = (value & 0x20) !== 0;
+      this.lengthCounterEnable = (value & 0x20) === 0;
+      if (this.envDecayDisable) {
+        this.masterVolume = this.envDecayRate;
+      } else {
+        this.masterVolume = this.envVolume;
+      }
+    } else if (address === 0x400e) {
+      this.progTimerMax = this.papu.getNoiseWaveLength(value & 0xf);
+      this.randomMode = value >> 7;
+    } else if (address === 0x400f) {
+      this.lengthCounter = this.papu.getLengthMax(value & 248);
+      this.envReset = true;
+    }
+  }
+  setEnabled(value) {
+    this.isEnabled = value;
+    if (!value) {
+      this.lengthCounter = 0;
+    }
+    this.updateSampleValue();
+  }
+  getLengthStatus() {
+    return this.lengthCounter === 0 || !this.isEnabled ? 0 : 1;
+  }
+}
+
+class ChannelSquare {
+  constructor(papu, square1) {
+    this.papu = papu;
+
+    this.dutyLookup = [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1];
+
+    this.impLookup = [
+      1,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      -1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+    ];
+
+    this.sqr1 = square1;
+    this.isEnabled = null;
+    this.lengthCounterEnable = null;
+    this.sweepActive = null;
+    this.envDecayDisable = null;
+    this.envDecayLoopEnable = null;
+    this.envReset = null;
+    this.sweepCarry = null;
+    this.updateSweepPeriod = null;
+
+    this.progTimerCount = null;
+    this.progTimerMax = null;
+    this.lengthCounter = null;
+    this.squareCounter = null;
+    this.sweepCounter = null;
+    this.sweepCounterMax = null;
+    this.sweepMode = null;
+    this.sweepShiftAmount = null;
+    this.envDecayRate = null;
+    this.envDecayCounter = null;
+    this.envVolume = null;
+    this.masterVolume = null;
+    this.dutyMode = null;
+    this.sweepResult = null;
+    this.sampleValue = null;
+    this.vol = null;
+
+    this.reset();
+  }
+  reset() {
+    this.progTimerCount = 0;
+    this.progTimerMax = 0;
+    this.lengthCounter = 0;
+    this.squareCounter = 0;
+    this.sweepCounter = 0;
+    this.sweepCounterMax = 0;
+    this.sweepMode = 0;
+    this.sweepShiftAmount = 0;
+    this.envDecayRate = 0;
+    this.envDecayCounter = 0;
+    this.envVolume = 0;
+    this.masterVolume = 0;
+    this.dutyMode = 0;
+    this.vol = 0;
+
+    this.isEnabled = false;
+    this.lengthCounterEnable = false;
+    this.sweepActive = false;
+    this.sweepCarry = false;
+    this.envDecayDisable = false;
+    this.envDecayLoopEnable = false;
+  }
+  clockLengthCounter() {
+    if (this.lengthCounterEnable && this.lengthCounter > 0) {
+      this.lengthCounter--;
+      if (this.lengthCounter === 0) {
+        this.updateSampleValue();
+      }
+    }
+  }
+  clockEnvDecay() {
+    if (this.envReset) {
+      this.envReset = false;
+      this.envDecayCounter = this.envDecayRate + 1;
+      this.envVolume = 0xf;
+    } else if (--this.envDecayCounter <= 0) {
+      this.envDecayCounter = this.envDecayRate + 1;
+      if (this.envVolume > 0) {
+        this.envVolume--;
+      } else {
+        this.envVolume = this.envDecayLoopEnable ? 0xf : 0;
+      }
+    }
+
+    if (this.envDecayDisable) {
+      this.masterVolume = this.envDecayRate;
+    } else {
+      this.masterVolume = this.envVolume;
+    }
+    this.updateSampleValue();
+  }
+  clockSweep() {
+    if (--this.sweepCounter <= 0) {
+      this.sweepCounter = this.sweepCounterMax + 1;
+      if (this.sweepActive && this.sweepShiftAmount > 0 && this.progTimerMax > 7) {
+        this.sweepCarry = false;
+        if (this.sweepMode === 0) {
+          this.progTimerMax += this.progTimerMax >> this.sweepShiftAmount;
+          if (this.progTimerMax > 4095) {
+            this.progTimerMax = 4095;
+            this.sweepCarry = true;
+          }
+        } else {
+          this.progTimerMax = this.progTimerMax - ((this.progTimerMax >> this.sweepShiftAmount) - (this.sqr1 ? 1 : 0));
+        }
+      }
+    }
+
+    if (this.updateSweepPeriod) {
+      this.updateSweepPeriod = false;
+      this.sweepCounter = this.sweepCounterMax + 1;
+    }
+  }
+  updateSampleValue() {
+    if (this.isEnabled && this.lengthCounter > 0 && this.progTimerMax > 7) {
+      if (this.sweepMode === 0 && this.progTimerMax + (this.progTimerMax >> this.sweepShiftAmount) > 4095) {
+        this.sampleValue = 0;
+      } else {
+        this.sampleValue = this.masterVolume * this.dutyLookup[(this.dutyMode << 3) + this.squareCounter];
+      }
+    } else {
+      this.sampleValue = 0;
+    }
+  }
+  writeReg(address, value) {
+    var addrAdd = this.sqr1 ? 0 : 4;
+    if (address === 0x4000 + addrAdd) {
+      this.envDecayDisable = (value & 0x10) !== 0;
+      this.envDecayRate = value & 0xf;
+      this.envDecayLoopEnable = (value & 0x20) !== 0;
+      this.dutyMode = (value >> 6) & 0x3;
+      this.lengthCounterEnable = (value & 0x20) === 0;
+      if (this.envDecayDisable) {
+        this.masterVolume = this.envDecayRate;
+      } else {
+        this.masterVolume = this.envVolume;
+      }
+      this.updateSampleValue();
+    } else if (address === 0x4001 + addrAdd) {
+      this.sweepActive = (value & 0x80) !== 0;
+      this.sweepCounterMax = (value >> 4) & 7;
+      this.sweepMode = (value >> 3) & 1;
+      this.sweepShiftAmount = value & 7;
+      this.updateSweepPeriod = true;
+    } else if (address === 0x4002 + addrAdd) {
+      this.progTimerMax &= 0x700;
+      this.progTimerMax |= value;
+    } else if (address === 0x4003 + addrAdd) {
+      this.progTimerMax &= 0xff;
+      this.progTimerMax |= (value & 0x7) << 8;
+
+      if (this.isEnabled) {
+        this.lengthCounter = this.papu.getLengthMax(value & 0xf8);
+      }
+
+      this.envReset = true;
+    }
+  }
+  setEnabled(value) {
+    this.isEnabled = value;
+    if (!value) {
+      this.lengthCounter = 0;
+    }
+    this.updateSampleValue();
+  }
+  getLengthStatus() {
+    return this.lengthCounter === 0 || !this.isEnabled ? 0 : 1;
+  }
+}
+
+class ChannelTriangle {
+  constructor(papu) {
+    this.papu = papu;
+
+    this.isEnabled = null;
+    this.sampleCondition = null;
+    this.lengthCounterEnable = null;
+    this.lcHalt = null;
+    this.lcControl = null;
+
+    this.progTimerCount = null;
+    this.progTimerMax = null;
+    this.triangleCounter = null;
+    this.lengthCounter = null;
+    this.linearCounter = null;
+    this.lcLoadValue = null;
+    this.sampleValue = null;
+    this.tmp = null;
+
+    this.reset();
+  }
+  reset() {
+    this.progTimerCount = 0;
+    this.progTimerMax = 0;
+    this.triangleCounter = 0;
+    this.isEnabled = false;
+    this.sampleCondition = false;
+    this.lengthCounter = 0;
+    this.lengthCounterEnable = false;
+    this.linearCounter = 0;
+    this.lcLoadValue = 0;
+    this.lcHalt = true;
+    this.lcControl = false;
+    this.tmp = 0;
+    this.sampleValue = 0xf;
+  }
+  clockLengthCounter() {
+    if (this.lengthCounterEnable && this.lengthCounter > 0) {
+      this.lengthCounter--;
+      if (this.lengthCounter === 0) {
+        this.updateSampleCondition();
+      }
+    }
+  }
+  clockLinearCounter() {
+    if (this.lcHalt) {
+      this.linearCounter = this.lcLoadValue;
+      this.updateSampleCondition();
+    } else if (this.linearCounter > 0) {
+      this.linearCounter--;
+      this.updateSampleCondition();
+    }
+    if (!this.lcControl) {
+      this.lcHalt = false;
+    }
+  }
+  getLengthStatus() {
+    return this.lengthCounter === 0 || !this.isEnabled ? 0 : 1;
+  }
+
+  readReg(address) {
+    return 0;
+  }
+  writeReg(address, value) {
+    if (address === 0x4008) {
+      this.lcControl = (value & 0x80) !== 0;
+      this.lcLoadValue = value & 0x7f;
+
+      this.lengthCounterEnable = !this.lcControl;
+    } else if (address === 0x400a) {
+      this.progTimerMax &= 0x700;
+      this.progTimerMax |= value;
+    } else if (address === 0x400b) {
+      this.progTimerMax &= 0xff;
+      this.progTimerMax |= (value & 0x07) << 8;
+      this.lengthCounter = this.papu.getLengthMax(value & 0xf8);
+      this.lcHalt = true;
+    }
+
+    this.updateSampleCondition();
+  }
+  clockProgrammableTimer(nCycles) {
+    if (this.progTimerMax > 0) {
+      this.progTimerCount += nCycles;
+      while (this.progTimerMax > 0 && this.progTimerCount >= this.progTimerMax) {
+        this.progTimerCount -= this.progTimerMax;
+        if (this.isEnabled && this.lengthCounter > 0 && this.linearCounter > 0) {
+          this.clockTriangleGenerator();
+        }
+      }
+    }
+  }
+  clockTriangleGenerator() {
+    this.triangleCounter++;
+    this.triangleCounter &= 0x1f;
+  }
+  setEnabled(value) {
+    this.isEnabled = value;
+    if (!value) {
+      this.lengthCounter = 0;
+    }
+    this.updateSampleCondition();
+  }
+  updateSampleCondition() {
+    this.sampleCondition = this.isEnabled && this.progTimerMax > 7 && this.linearCounter > 0 && this.lengthCounter > 0;
   }
 }

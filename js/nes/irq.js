@@ -1,6 +1,4 @@
-class Irq {
-  cpu = null;
-
+class IRQ {
   mapperIrqWanted = false;
   frameIrqWanted = false;
   dmcIrqWanted = false;
@@ -8,8 +6,8 @@ class Irq {
   nmiWanted = false;
   irqWanted = false;
 
-  constructor(cpu) {
-    this.cpu = cpu;
+  constructor(nes) {
+    this.nes = nes;
   }
   set nmiWanted(flg) {
     this.nmiWanted = flg;
@@ -41,9 +39,6 @@ class Irq {
   get dmcIrqWanted() {
     return this.dmcIrqWanted;
   }
-
-
-
   checkIrqWanted() {
     if (this.mapperIrqWanted || this.frameIrqWanted || this.dmcIrqWanted) {
       this.irqWanted = true;
@@ -52,12 +47,10 @@ class Irq {
     }
   }
   checkCpuIrqWanted() {
-    if (this.nmiWanted || (this.irqWanted && !this.cpu.interrupt)) {
-      if (this.nmiWanted) {
-        return "nmi";
-      } else {
-        return "irq";
-      }
+    if (this.nmiWanted){
+      return "nmi";
+    }else if(!this.nes.cpu.interrupt && (this.irqWanted || this.nes.cpu.toIRQ !== 0x00)) {
+      return "irq";
     } else {
       return false;
     }

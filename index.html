@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -10,36 +10,36 @@
   </head>
   <body>
     <div class="ctrl_div">
-      <span style="padding-right: 100px; color: #aaa"
-        ><a href="http://www.retrosouls.net">Super Painter by RetroSouls Team</a>
-        <a
-          href="https://github.com/xorann/BigWigs/blob/master/Creative%20Commons%20Attribution-NonCommercial-ShareAlike%204.0%20International"
-          >(Attribution-NonCommercial-ShareAlike 4.0 International )</a
-        ></span
-      >
-      enter=START shift=SELECT z=B a=A <input type="file" id="fileInput" />
+      enter=START shift=SELECT z=B a=A 
+      <input type="file" id="fileInput" />
+      <button id="resetButton">Reset</button>
     </div>
+    <canvas id="output" width="256" height="224">
     <div>
-      <canvas id="output"></canvas>
       <!--
             Copyright (c) 安東　邦泰
+            Kunihiro Ando
             Released under the MIT license
             http://opensource.org/licenses/mit-license.php
       -->
     </div>
-    <script src="js/nes/cpu.js"></script>
-    <script src="js/nes/ppu_.js"></script>
-    <script src="js/nes/apu.js"></script>
-    <script src="js/nes/mem.js"></script>
-    <script src="js/nes/dma.js"></script>
+    <script src="js/nes/mapper/Base.js"></script>
+    <script src="js/nes/mapper/0.js"></script>
+    <script src="js/nes/mapper/1.js"></script>
+    <script src="js/nes/mapper/2.js"></script>  
+    <script src="js/nes/mapper/3.js"></script>
+    <script src="js/nes/mapper/4.js"></script>
+    <script src="js/nes/mapper/5.js"></script>
+
     <script src="js/nes/io.js"></script>
-    <script src="js/nes/interrupt.js"></script>
+    <script src="js/nes/irq.js"></script>
 
-    <script src="js/nes/mappers.js"></script>
-    <script src="js/nes/mappers/0.js"></script>
-
-    <script src="js/utils/utils.js"></script>
-    <script src="js/nes/nes.js"></script>
+    <script src="js/nes/dma.js"></script>
+    <script src="js/nes/mem.js"></script>
+    <script src="js/nes/apu.js"></script>
+    <script src="js/nes/ppu.js"></script>
+    <script src="js/nes/cpu.js"></script>
+    <script src="js/nes/main.js"></script>
     <script src="js/index.js"></script>
   </body>
 </html>

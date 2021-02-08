@@ -1,11 +1,9 @@
-class Io {
+class IO {
   nes = null;
   crntCtrlState1 = 0;
   crntCtrlState2 = 0;
-
   latchedCtrlState1 = 0;
   latchedCtrlState2 = 0;
-
   ctrlLatched = false;
 
   constructor(nes) {

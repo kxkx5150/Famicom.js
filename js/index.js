@@ -1,25 +1,11 @@
-let loopId = null;
-const NES = new Nes("output");
+const canvas = document.getElementById("output");
+const nes = new NES(canvas);
 
-// fetch("./free_roms/sp.nes")
-//   .then((res) => res.arrayBuffer())
-//   .then((arybuf) => {
-//     setRom(arybuf);
-//   });
-document.getElementById("fileInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  var fileReader = new FileReader();
-  fileReader.onload = function () {
-    setRom(this.result);
-  };
-  fileReader.readAsArrayBuffer(file);
-});
+
 window.addEventListener(
   "resize",
   (e) => {
-    setTimeout(() => {
-      resizeCanvas();
-    }, 1500);
+    resizeCanvas();
   },
   true
 );
@@ -37,70 +23,73 @@ window.addEventListener(
   },
   true
 );
-const setRom = (arybuf) => {
-  cancelAnimationFrame(loopId);
-  const flg = NES.init(arybuf);
-  if (flg) update();
-};
-const update = () => {
-  NES.runFrames();
-  loopId = requestAnimationFrame(update);
-};
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  var fileReader = new FileReader();
+  fileReader.onload = function () {
+    nes.cycle(this.result);
+  };
+  fileReader.readAsArrayBuffer(file);
+});
+document.getElementById("resetButton").addEventListener("click", (e) => {
+  nes.Reset();
+});
 const ctrlMap1 = {
-  arrowright: NES.INPUT.RIGHT,
-  arrowleft: NES.INPUT.LEFT,
-  arrowdown: NES.INPUT.DOWN,
-  arrowup: NES.INPUT.UP,
-  enter: NES.INPUT.START,
-  shift: NES.INPUT.SELECT,
-  z: NES.INPUT.B,
-  a: NES.INPUT.A,
+  arrowright: nes.INPUT.RIGHT,
+  arrowleft: nes.INPUT.LEFT,
+  arrowdown: nes.INPUT.DOWN,
+  arrowup: nes.INPUT.UP,
+  enter: nes.INPUT.START,
+  shift: nes.INPUT.SELECT,
+  z: nes.INPUT.B,
+  a: nes.INPUT.A,
 };
 const ctrlMap2 = {
-  l: NES.INPUT.RIGHT,
-  j: NES.INPUT.LEFT,
-  k: NES.INPUT.DOWN,
-  i: NES.INPUT.UP,
-  p: NES.INPUT.START,
-  o: NES.INPUT.SELECT,
-  t: NES.INPUT.B,
-  g: NES.INPUT.A,
+  l: nes.INPUT.RIGHT,
+  j: nes.INPUT.LEFT,
+  k: nes.INPUT.DOWN,
+  i: nes.INPUT.UP,
+  p: nes.INPUT.START,
+  o: nes.INPUT.SELECT,
+  t: nes.INPUT.B,
+  g: nes.INPUT.A,
 };
 const checkKeyMap = (e, up) => {
   if (ctrlMap1[e.key.toLowerCase()] !== undefined) {
     if (up) {
-      NES.keyUp(1, ctrlMap1[e.key.toLowerCase()]);
+      nes.keyUp(1, ctrlMap1[e.key.toLowerCase()]);
     } else {
-      NES.keyDown(1, ctrlMap1[e.key.toLowerCase()]);
+      nes.keyDown(1, ctrlMap1[e.key.toLowerCase()]);
     }
     e.preventDefault();
   } else if (ctrlMap2[e.key.toLowerCase()] !== undefined) {
     if (up) {
-      NES.keyUp(2, ctrlMap2[e.key.toLowerCase()]);
+      nes.keyUp(2, ctrlMap2[e.key.toLowerCase()]);
     } else {
-      NES.keyDown(2, ctrlMap2[e.key.toLowerCase()]);
+      nes.keyDown(2, ctrlMap2[e.key.toLowerCase()]);
     }
     e.preventDefault();
     e.stopPropagation();
   }
 };
 resizeCanvas = () => {
-  canvas = document.getElementById("output");
-  const wh = window.innerHeight;
-  const ww = window.innerWidth;
-  const nw = 256;
-  const nh = 240;
-  const waspct = ww / wh;
-  const naspct = nw / nh;
+  setTimeout(() => {
+    let canvas = document.getElementById("output");
+    const wh = window.innerHeight;
+    const ww = window.innerWidth;
+    const nw = 256;
+    const nh = 224;
+    const waspct = ww / wh;
+    const naspct = nw / nh;
 
-  if (waspct > naspct) {
-    var val = wh / nh;
-  } else {
-    var val = ww / nw;
-  }
-  canvas.style.height = 240 * val - 50 + "px";
-  canvas.style.width = 256 * val - 24 + "px";
+    if (waspct > naspct) {
+      var val = wh / nh;
+    } else {
+      var val = ww / nw;
+    }
+    let ctrldiv = document.querySelector(".ctrl_div");
+    canvas.style.height = 224 * val - ctrldiv.offsetHeight - 18 + "px";
+    canvas.style.width = 256 * val - 24 + "px";
+  }, 1200);
 };
-setTimeout(() => {
-  resizeCanvas();
-}, 2000);
+resizeCanvas();
