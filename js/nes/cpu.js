@@ -300,10 +300,6 @@ class CPU {
     this.reset();
     this.PC[0] = this.mem.Get16(0xfffc);
   }
-  initTest() {
-    this.cycles = 7;
-    this.PC[0] = 0xc000;
-  }
   runCpu(test) {
     const oldpc = this.PC[0];
     let instr = this.mem.Get(this.PC[0]++);
@@ -325,7 +321,7 @@ class CPU {
     let addr = this.getAddr(opobj.adm);
     this.execInstruction(opobj.op, addr);
     if(test)this.showInfo(oldpc,opobj,addr)
-    return;
+    return true;
   }
   showInfo(oldpc,opobj,addr){
     console.log(oldpc.toString(16).toUpperCase() + " : " +  opobj.op);

@@ -1,5 +1,4 @@
 var DEBUG = false;
-
 class NES {
   constructor(canvas) {
     this.fps = 60;
@@ -38,8 +37,16 @@ class NES {
     this.dma = new DMA(this);
     this.mem = new RAM(this);
     this.apu = new APU(this);
-    this.cpu = new CPU(this, this.mem);
     this.ppu = new PPU(this, this.ctx);
+
+    //// CPU type Select////
+    this.cpuType = 1;
+    ///////////////////////
+
+    this.cpu1 = new CPU(this, this.mem);
+    this.cpu2 = new CPU2(this, this.mem);
+    if(this.cpuType === 2) this.cpu = this.cpu2;
+    else this.cpu = this.cpu1;
     this.setAudioProcessor();
     this.INPUT = {
       A: 0,
@@ -75,24 +82,60 @@ class NES {
     this.mapperSelect();
     this.mapper.Init();
     this.ppu.PpuInit();
+    this.cpu2.initCpu();
     this.cpu.initCpu();
+    this.mem.initMem();
     return true;
   }
   cycle(arybuf) {
     if (!arybuf) return;
     cancelAnimationFrame(this.timerId);
     const flg = this.initNES(arybuf);
-
     if (flg) this.update();
   }
   update(count) {
     if (count) {
-      this.runTest(count);
+      this.runCPU(count);
     } else {
-      this.runNES();
+      this.runCPU();
       this.timerId = requestAnimationFrame(() => {
         this.update();
       });
+    }
+  }
+  runCPU(count){
+    if(this.cpuType === 2){
+      this.runCPU2(count)
+    }else{
+      this.runCPU1(count)
+    }
+  }
+  runCPU2(count){
+    this.DrawFlag = false;
+    while (!this.DrawFlag) {
+      const opcode = this.cpu.runCpu();
+      if(!opcode)break;
+      this.cpu.exec(opcode);
+      this.mapper.CPUSync(this.cpu.CPUClock);
+      this.ppu.PpuRun();
+      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
+      this.cpu.CPUClock = 0;
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
+      if(count && !--count){
+        console.log("break : "+count);
+        break;
+      }
+    }
+  }
+  runCPU1(count) {
+    this.DrawFlag = false;
+    while (!this.DrawFlag) {
+      if (!this.cpu.runCpu()) break;
+      this.mapper.CPUSync(this.cpu.CPUClock);
+      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
+      this.ppu.PpuRun();
+      this.cpu.CPUClock = 0;
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
     }
   }
   runTest(count) {
@@ -112,17 +155,6 @@ class NES {
     }
     console.log("stop addr: " + this.cpu.PC[0].toString(16).toUpperCase() + " cycle: " + cyclesum);
   }
-  runNES() {
-    this.DrawFlag = false;
-    while (!this.DrawFlag) {
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      if (this.cpu.runCpu()) break;
-      this.mapper.CPUSync(this.cpu.CPUClock);
-      this.ppu.PpuRun();
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
-      this.cpu.CPUClock = 0;
-    }
-  }
   Reset(hard) {
     cancelAnimationFrame(this.timerId);
     if (this.actx) this.actx.suspend();
@@ -130,7 +162,8 @@ class NES {
     this.audio_rcursor = 0;
     this.audioSample.l.fill(0);
     this.audioSample.r.fill(0);
-    this.cpu.reset(hard);
+    this.cpu1.reset(hard);
+    this.cpu2.reset(hard);
     this.dma.reset(hard);
     this.io.reset(hard);
     this.irq.reset(hard);

@@ -1,7 +1,19 @@
 class RAM {
   constructor(nes) {
     this.nes = nes;
-    this.ram = new Uint8Array(0x800);
+    this.ram2 = new Array(0x800);
+    this.ram1 = new Uint8Array(0x800);
+    this.ram = this.ram1;
+    this.reset();
+  }
+  initMem(){
+    if(this.nes.cpuType === 2){
+      console.log("CPU type2 Array Memory");
+      this.ram = this.ram2;
+    }else{
+      console.log("CPU type1 Uint8Array Memory");
+      this.ram = this.ram1;
+    }
     this.reset();
   }
   Get(address) {
@@ -198,6 +210,6 @@ class RAM {
     }
   }
   reset(hard){
-    if(hard)this.ram.fill(0);
+    this.ram.fill(0);
   }
 }
