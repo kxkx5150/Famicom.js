@@ -13,7 +13,6 @@ NES Emulator
 
 <br>
 
-現在は mapper 0 のROMしか対応していません。
 ![キャプチャ](https://user-images.githubusercontent.com/10168979/106599944-1dd98e80-659d-11eb-99a9-72e8363cb07b.PNG)
 
 <br>
@@ -32,6 +31,16 @@ https://qiita.com/bokuweb/items/1575337bef44ae82f4d3
 
 ##### 壁は通り抜けられませんよ
 http://taotao54321.hatenablog.com/archive/category/NES
+
+<br><br><br>
+
+#### 実装度も凄まじく、コードにコメントも丁寧に書いてあり。
+
+解説サイト読むより良いと思います。
+
+FaithJS  
+
+https://sairoutine.github.io/faithjs/public/
 
 <br><br><br>
 
