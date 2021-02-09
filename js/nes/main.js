@@ -40,7 +40,7 @@ class NES {
     this.ppu = new PPU(this, this.ctx);
 
     //// CPU type Select////
-    this.cpuType = 1;
+    this.cpuType = 2;
     ///////////////////////
 
     this.cpu1 = new CPU(this, this.mem);
@@ -113,14 +113,14 @@ class NES {
   runCPU2(count){
     this.DrawFlag = false;
     while (!this.DrawFlag) {
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
       const opcode = this.cpu.runCpu();
-      if(!opcode)break;
-      this.cpu.exec(opcode);
+      if(this.cpu.CPUClock < 1)return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
+      this.cpu.exec(opcode);
       if(count && !--count){
         console.log("break : "+count);
         break;
@@ -130,30 +130,14 @@ class NES {
   runCPU1(count) {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
       if (!this.cpu.runCpu()) break;
+      if(this.cpu.CPUClock < 1)return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.ppu.PpuRun();
       this.cpu.CPUClock = 0;
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
     }
-  }
-  runTest(count) {
-    this.cpu.PC[0] = 0xc000;
-    let cyclesum = 0;
-    for (let i = 0; i < count; i++) {
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      if (this.cpu.runCpu(true)) break;
-      this.mapper.CPUSync(this.cpu.CPUClock);
-      this.ppu.PpuRun();
-      cyclesum += this.cpu.CPUClock;
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
-      this.cpu.CPUClock = 0;
-      if (this.cpu.PC[0] === 0xc66e) {
-        break;
-      }
-    }
-    console.log("stop addr: " + this.cpu.PC[0].toString(16).toUpperCase() + " cycle: " + cyclesum);
   }
   Reset(hard) {
     cancelAnimationFrame(this.timerId);

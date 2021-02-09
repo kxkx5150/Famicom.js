@@ -210,6 +210,8 @@ class RAM {
     }
   }
   reset(hard){
-    this.ram.fill(0);
+    for (var i = 0; i < this.ram.length; i++) {
+      this.ram[i] = 0x0f;
+    }
   }
 }

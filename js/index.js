@@ -27,6 +27,7 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   var fileReader = new FileReader();
   fileReader.onload = function () {
+    if(!this.result)return;
     nes.cycle(this.result);
   };
   fileReader.readAsArrayBuffer(file);
