@@ -1,3 +1,5 @@
+var DEBUG = false;
+
 class NES {
   constructor(canvas) {
     this.fps = 60;
@@ -56,6 +58,13 @@ class NES {
     this.MMC5_Ch = new Array(2);
     this.MMC5_Level = 0;
     this.Init_MMC5();
+    /* N163 */
+    this.N163_ch_data = new Array(8);
+    this.N163_RAM = new Array(128);
+    this.N163_Address = 0x00;
+    this.N163_ch = 0;
+    this.N163_Level = 0;
+    this.N163_Clock = 0;
   }
   initNES(arybuf) {
     this.Reset(true);
@@ -73,21 +82,45 @@ class NES {
     if (!arybuf) return;
     cancelAnimationFrame(this.timerId);
     const flg = this.initNES(arybuf);
+
     if (flg) this.update();
   }
-  update() {
-    this.runNES();
-    this.timerId = requestAnimationFrame(this.update.bind(this));
+  update(count) {
+    if (count) {
+      this.runTest(count);
+    } else {
+      this.runNES();
+      this.timerId = requestAnimationFrame(() => {
+        this.update();
+      });
+    }
+  }
+  runTest(count) {
+    this.cpu.PC[0] = 0xc000;
+    let cyclesum = 0;
+    for (let i = 0; i < count; i++) {
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
+      if (this.cpu.runCpu(true)) break;
+      this.mapper.CPUSync(this.cpu.CPUClock);
+      this.ppu.PpuRun();
+      cyclesum += this.cpu.CPUClock;
+      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
+      this.cpu.CPUClock = 0;
+      if (this.cpu.PC[0] === 0xc66e) {
+        break;
+      }
+    }
+    console.log("stop addr: " + this.cpu.PC[0].toString(16).toUpperCase() + " cycle: " + cyclesum);
   }
   runNES() {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
-      if(this.cpu.runCpu())break;
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
+      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
+      if (this.cpu.runCpu()) break;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
+      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
     }
   }
   Reset(hard) {
@@ -118,6 +151,7 @@ class NES {
     this.atx_scr = this.actx.createScriptProcessor(this.AUDIO_BUFFERING, 0, 2);
     this.atx_scr.addEventListener("audioprocess", this.audioCallback.bind(this));
     this.atx_scr.connect(this.actx.destination);
+    this.sampleRate = this.actx.sampleRate;
   }
   checkAudioRemain() {
     return (this.audio_wcursor - this.audio_rcursor) & this.SAMPLE_MASK;
@@ -125,11 +159,11 @@ class NES {
   audioCallback(e) {
     var dst = e.outputBuffer;
     let len = dst.length;
+    var dst_l = dst.getChannelData(0);
+    var dst_r = dst.getChannelData(1);
     if (this.checkAudioRemain() < this.AUDIO_BUFFERING) {
       return;
     }
-    var dst_l = dst.getChannelData(0);
-    var dst_r = dst.getChannelData(1);
     for (var i = 0; i < len; i++) {
       var src_idx = (this.audio_rcursor + i) & this.SAMPLE_MASK;
       dst_l[i] = this.audioSample.l[src_idx];
@@ -137,6 +171,7 @@ class NES {
     }
     this.audio_rcursor = (this.audio_rcursor + len) & this.SAMPLE_MASK;
   }
+
   SetRom(arraybuffer) {
     if (!arraybuffer) return false;
     var u8array = new Uint8Array(arraybuffer);
@@ -160,6 +195,7 @@ class NES {
     this.TrainerEnable = (Rom[6] & 0x04) !== 0;
     this.FourScreen = (Rom[6] & 0x08) !== 0;
     this.MapperNumber = (Rom[6] >> 4) | (Rom[7] & 0xf0);
+    console.log("--- MapperNumber " + this.MapperNumber);
     return Rom;
   }
   StorageClear() {
@@ -264,8 +300,8 @@ class NES {
       // 	this.mapper = new Mapper9(this);
       // 	break;
       case 10:
-      	this.mapper = new Mapper10(this);
-      	break;
+        this.mapper = new Mapper10(this);
+        break;
       // case 16:
       // 	this.mapper = new Mapper16(this);
       // 	break;
@@ -335,9 +371,9 @@ class NES {
       // case 75:
       // 	this.mapper = new Mapper75(this);
       // 	break;
-      // case 76:
-      // 	this.mapper = new Mapper76(this);
-      // 	break;
+      case 76:
+        this.mapper = new Mapper76(this);
+        break;
       // case 77:
       // 	this.mapper = new Mapper77(this);
       // 	break;
@@ -416,6 +452,90 @@ class NES {
     }
     return true;
   }
+
+  Read_N163_RAM = function () {
+    var ret = this.N163_RAM[this.N163_Address & 0x7f];
+    if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
+    return ret;
+  };
+  /* N163 */
+  Init_N163 = function () {
+    var i;
+    for (i = 0; i < this.N163_RAM.length; i++) this.N163_RAM[i] = 0x00;
+    for (i = 0; i < this.N163_ch_data.length; i++)
+      this.N163_ch_data[i] = { Freq: 0, Phase: 0, Length: 0, Address: 0, Vol: 0 };
+    this.N163_Address = 0x00;
+    this.N163_ch = 0;
+    this.N163_Clock = 0;
+  };
+  Write_N163_RAM = function (data) {
+    var address = this.N163_Address & 0x7f;
+    this.N163_RAM[address] = data;
+
+    if (address >= 0x40) {
+      var ch = (address >>> 3) & 0x07;
+      switch (address & 0x07) {
+        case 0x00:
+          this.N163_ch_data[ch].Freq = (this.N163_ch_data[ch].Freq & 0x3ff00) | data;
+          break;
+        case 0x01:
+          this.N163_ch_data[ch].Phase = (this.N163_ch_data[ch].Freq & 0xffff00) | data;
+          break;
+        case 0x02:
+          this.N163_ch_data[ch].Freq = (this.N163_ch_data[ch].Freq & 0x300ff) | (data << 8);
+          break;
+        case 0x03:
+          this.N163_ch_data[ch].Phase = (this.N163_ch_data[ch].Freq & 0xff00ff) | (data << 8);
+          break;
+        case 0x04:
+          this.N163_ch_data[ch].Freq = (this.N163_ch_data[ch].Freq & 0x0ffff) | ((data & 0x03) << 16);
+          this.N163_ch_data[ch].Length = (256 - (data & 0xfc)) << 16;
+          break;
+        case 0x05:
+          this.N163_ch_data[ch].Phase = (this.N163_ch_data[ch].Freq & 0x00ffff) | (data << 16);
+          break;
+        case 0x06:
+          this.N163_ch_data[ch].Address = data;
+          break;
+        case 0x07:
+          this.N163_ch_data[ch].Vol = data & 0x0f;
+          if (address === 0x7f) this.N163_ch = (data >>> 4) & 0x07;
+          break;
+      }
+    }
+    if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
+  };
+
+  Read_N163_RAM = function () {
+    var ret = this.N163_RAM[this.N163_Address & 0x7f];
+    if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
+    return ret;
+  };
+
+  Count_N163 = function (clock) {
+    this.N163_Clock += clock;
+    var cl = (this.N163_ch + 1) * 15;
+    while (this.N163_Clock >= cl) {
+      this.N163_Clock -= cl;
+      for (var i = 7 - this.N163_ch; i < 8; i++) {
+        if (this.N163_ch_data[i].Length > 0)
+          this.N163_ch_data[i].Phase =
+            (this.N163_ch_data[i].Phase + this.N163_ch_data[i].Freq) % this.N163_ch_data[i].Length;
+      }
+    }
+  };
+
+  Out_N163 = function () {
+    var all_out = 0;
+
+    for (var i = 7 - this.N163_ch; i < 8; i++) {
+      var addr = (this.N163_ch_data[i].Address + (this.N163_ch_data[i].Phase >> 16)) & 0xff;
+      var data = this.N163_RAM[addr >>> 1];
+      data = (addr & 0x01) === 0x00 ? data & 0x0f : data >>> 4;
+      all_out += (data - 8) * this.N163_ch_data[i].Vol;
+    }
+    return all_out << 2;
+  };
 
   Init_MMC5() {
     this.MMC5_FrameSequenceCounter = 0;

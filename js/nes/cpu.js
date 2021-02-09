@@ -304,7 +304,8 @@ class CPU {
     this.cycles = 7;
     this.PC[0] = 0xc000;
   }
-  runCpu() {
+  runCpu(test) {
+    const oldpc = this.PC[0];
     let instr = this.mem.Get(this.PC[0]++);
     this.CPUClock = this.opcodes[instr].cycle;
     const val = this.nes.irq.checkCpuIrqWanted();
@@ -323,7 +324,11 @@ class CPU {
     const opobj = this.opcodes[instr];
     let addr = this.getAddr(opobj.adm);
     this.execInstruction(opobj.op, addr);
+    if(test)this.showInfo(oldpc,opobj,addr)
     return;
+  }
+  showInfo(oldpc,opobj,addr){
+    console.log(oldpc.toString(16).toUpperCase() + " : " +  opobj.op);
   }
   showRegisters() {
     console.log("========= cpu_info =========");

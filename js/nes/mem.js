@@ -13,12 +13,14 @@ class RAM {
           case 0x0000:
           case 0x0001:
           case 0x0002:
+            // console.log("ReadPPUStatus: "+this.nes.cpu.PC[0].toString(16).toUpperCase());
             return this.nes.ppu.ReadPPUStatus();
           case 0x0003:
           case 0x0004:
           case 0x0005:
           case 0x0006:
           case 0x0007:
+            // console.log("ReadPPUData: "+this.nes.cpu.PC[0].toString(16).toUpperCase());
             return this.nes.ppu.ReadPPUData();
         }
         return 0;
@@ -91,26 +93,40 @@ class RAM {
       case 0x2000:
         switch (address & 0x07) {
           case 0x00:
+            // console.log("--- PPUCTRL");
+
             this.nes.ppu.WritePPUControlRegister0(data);
             return;
           case 0x01:
+            // console.log("--- PPUMASK");
+
             this.nes.ppu.WritePPUControlRegister1(data);
             return;
           case 0x02:
             return;
           case 0x03:
+            // console.log("--- OAMADDR");
+
             this.nes.ppu.WriteSpriteAddressRegister(data);
             return;
           case 0x04:
+            // console.log("--- OAMDATA");
+
             this.nes.ppu.WriteSpriteData(data);
             return;
           case 0x05:
+            // console.log("--- PPUSCROLL");
+
             this.nes.ppu.WriteScrollRegister(data);
             return;
           case 0x06:
+            // console.log("--- PPUADDR");
+
             this.nes.ppu.WritePPUAddressRegister(data);
             return;
           case 0x07:
+            // console.log("--- PPUDATA");
+
             this.nes.ppu.WritePPUData(data);
             return;
         }
