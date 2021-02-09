@@ -64,7 +64,6 @@ class NES {
     this.MMC5_REG = new Array(0x20);
     this.MMC5_Ch = new Array(2);
     this.MMC5_Level = 0;
-    this.Init_MMC5();
     /* N163 */
     this.N163_ch_data = new Array(8);
     this.N163_RAM = new Array(128);
@@ -72,6 +71,44 @@ class NES {
     this.N163_ch = 0;
     this.N163_Level = 0;
     this.N163_Clock = 0;
+    this.WaveLengthCount = [
+      0x0a,
+      0xfe,
+      0x14,
+      0x02,
+      0x28,
+      0x04,
+      0x50,
+      0x06,
+      0xa0,
+      0x08,
+      0x3c,
+      0x0a,
+      0x0e,
+      0x0c,
+      0x1a,
+      0x0e,
+      0x0c,
+      0x10,
+      0x18,
+      0x12,
+      0x30,
+      0x14,
+      0x60,
+      0x16,
+      0xc0,
+      0x18,
+      0x48,
+      0x1a,
+      0x10,
+      0x1c,
+      0x20,
+      0x1e,
+    ];
+    this.WaveCh1_2DutyData = [4, 8, 16, 24];
+    this.MainClock = 1789772.5;
+    this.Init_MMC5();
+    this.Init_N163();
   }
   initNES(arybuf) {
     this.Reset(true);
@@ -79,7 +116,8 @@ class NES {
     this.StorageClear();
     this.StorageInit(Rom);
     if (this.actx) this.actx.resume();
-    this.mapperSelect();
+    const flg = this.mapperSelect();
+    if(!flg)return;
     this.mapper.Init();
     this.ppu.PpuInit();
     this.cpu2.initCpu();
@@ -146,6 +184,20 @@ class NES {
     this.audio_rcursor = 0;
     this.audioSample.l.fill(0);
     this.audioSample.r.fill(0);
+
+    this.MMC5_FrameSequenceCounter = 0;
+    this.MMC5_FrameSequence = 0;
+    this.MMC5_Level = 0;
+    // this.MMC5_REG.fill(0);
+    // this.MMC5_Ch.fill(0);
+
+    // this.N163_ch_data.fill(0);
+    // this.N163_RAM.fill(0);
+    this.N163_Address = 0x00;
+    this.N163_ch = 0;
+    this.N163_Level = 0;
+    this.N163_Clock = 0;
+
     this.cpu1.reset(hard);
     this.cpu2.reset(hard);
     this.dma.reset(hard);
@@ -325,9 +377,9 @@ class NES {
       // case 18:
       // 	this.mapper = new Mapper18(this);
       // 	break;
-      // case 19:
-      // 	this.mapper = new Mapper19(this);
-      // 	break;
+      case 19:
+      	this.mapper = new Mapper19(this);
+      	break;
       // case 20:
       // 	// DiskSystem
       // 	//this.mapper = new Mapper20(this);
@@ -672,41 +724,4 @@ class NES {
     all_out += (this.MMC5_REG[0x11] >> 2) - 16;
     return all_out << 5;
   }
-  WaveLengthCount = [
-    0x0a,
-    0xfe,
-    0x14,
-    0x02,
-    0x28,
-    0x04,
-    0x50,
-    0x06,
-    0xa0,
-    0x08,
-    0x3c,
-    0x0a,
-    0x0e,
-    0x0c,
-    0x1a,
-    0x0e,
-    0x0c,
-    0x10,
-    0x18,
-    0x12,
-    0x30,
-    0x14,
-    0x60,
-    0x16,
-    0xc0,
-    0x18,
-    0x48,
-    0x1a,
-    0x10,
-    0x1c,
-    0x20,
-    0x1e,
-  ];
-
-  WaveCh1_2DutyData = [4, 8, 16, 24];
-  MainClock = 1789772.5;
 }
