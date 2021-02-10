@@ -11,6 +11,8 @@ NES Emulator
   z = B  
   a = A  
 
+  Famicom のSaveに対応しました。rom file name　と紐ついているのでファイル名を変えると消えます。
+
 <br>
 
 ![キャプチャ](https://user-images.githubusercontent.com/10168979/106599944-1dd98e80-659d-11eb-99a9-72e8363cb07b.PNG)
