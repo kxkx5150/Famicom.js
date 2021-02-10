@@ -6,6 +6,7 @@ class NES {
     ///////////////////////
     this.fps = 60;
     this.sampleRate = 48000;
+    this.pause = false;
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
     this.actx = new window.AudioContext();
@@ -44,7 +45,7 @@ class NES {
 
     this.cpu1 = new CPU(this, this.mem);
     this.cpu2 = new CPU2(this, this.mem);
-    if(this.cpuType === 2) this.cpu = this.cpu2;
+    if (this.cpuType === 2) this.cpu = this.cpu2;
     else this.cpu = this.cpu1;
     this.setAudioProcessor();
     this.INPUT = {
@@ -106,8 +107,10 @@ class NES {
     ];
     this.WaveCh1_2DutyData = [4, 8, 16, 24];
     this.MainClock = 1789772.5;
+
     this.Init_MMC5();
     this.Init_N163();
+    this.initDB();
   }
   initNES(arybuf) {
     this.Reset(true);
@@ -116,7 +119,7 @@ class NES {
     this.StorageInit(Rom);
     if (this.actx) this.actx.resume();
     const flg = this.mapperSelect();
-    if(!flg)return;
+    if (!flg) return;
     this.mapper.Init();
     this.ppu.init();
     this.cpu.init();
@@ -139,26 +142,37 @@ class NES {
       });
     }
   }
-  runCPU(count){
-    if(this.cpuType === 2){
-      this.runCPU2(count)
-    }else{
-      this.runCPU1(count)
+  pauseNes() {
+    if (!this.timerId) return;
+    this.pause = !this.pause;
+    if (this.pause) {
+      cancelAnimationFrame(this.timerId);
+      if (this.actx) this.actx.suspend();
+    } else {
+      if (this.actx) this.actx.resume();
+      this.update();
     }
   }
-  runCPU2(count){
+  runCPU(count) {
+    if (this.cpuType === 2) {
+      this.runCPU2(count);
+    } else {
+      this.runCPU1(count);
+    }
+  }
+  runCPU2(count) {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
       const opcode = this.cpu.run();
-      if(this.cpu.CPUClock < 1)return;
+      if (this.cpu.CPUClock < 1) return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
       this.cpu.exec(opcode);
-      if(count && !--count){
-        console.log("break : "+count);
+      if (count && !--count) {
+        console.log("break : " + count);
         break;
       }
     }
@@ -168,7 +182,7 @@ class NES {
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
       if (!this.cpu.run()) break;
-      if(this.cpu.CPUClock < 1)return;
+      if (this.cpu.CPUClock < 1) return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
@@ -186,11 +200,7 @@ class NES {
     this.MMC5_FrameSequenceCounter = 0;
     this.MMC5_FrameSequence = 0;
     this.MMC5_Level = 0;
-    // this.MMC5_REG.fill(0);
-    // this.MMC5_Ch.fill(0);
 
-    // this.N163_ch_data.fill(0);
-    // this.N163_RAM.fill(0);
     this.N163_Address = 0x00;
     this.N163_ch = 0;
     this.N163_Level = 0;
@@ -206,6 +216,8 @@ class NES {
     this.ppu.clearCanvas();
     this.apu.reset();
     this.StorageClear();
+
+    this.pause = false;
   }
   onAudioSample(l, r) {
     if (!this.actx) return;
@@ -238,7 +250,6 @@ class NES {
     }
     this.audio_rcursor = (this.audio_rcursor + len) & this.SAMPLE_MASK;
   }
-
   SetRom(arraybuffer) {
     if (!arraybuffer) return false;
     var u8array = new Uint8Array(arraybuffer);
@@ -340,6 +351,67 @@ class NES {
       this.io.crntCtrlState2 &= ~(1 << button) & 0xff;
     }
   }
+  saveNes() {
+    this.pause = true;
+    if (this.actx) this.actx.suspend();
+    cancelAnimationFrame(this.timerId);
+  }
+  loadNes() {
+    var nes = this;
+    var dbName = "saveDB";
+    var storeName = "saveStore";
+    var keyValue = "1";
+    var openReq = indexedDB.open(dbName);
+
+    openReq.onsuccess = function (event) {
+      var db = event.target.result;
+      var trans = db.transaction(storeName, "readonly");
+      var store = trans.objectStore(storeName);
+      var getReq = store.get(keyValue);
+
+      getReq.onsuccess = function (event) {};
+    };
+  }
+  initDB() {
+    var dbName = "saveDB";
+    var dbVersion = 1.1;
+    var storeName = "saveStore";
+    var openReq = indexedDB.open(dbName, dbVersion);
+
+    openReq.onupgradeneeded = function (event) {
+      console.log("indexedDB create store");
+      var db = event.target.result;
+      db.createObjectStore(storeName, { keyPath: "id" });
+    };
+    openReq.onsuccess = function (event) {
+      console.log("indexedDB open");
+      var db = event.target.result;
+      db.close();
+    };
+    openReq.onerror = function (event) {
+      console.log("indexedDB open error");
+    };
+  }
+  createDbItem(json) {
+    var dbName = "saveDB";
+    var storeName = "saveStore";
+    var data = { id: "1", json: json };
+    var openReq = indexedDB.open(dbName);
+    openReq.onsuccess = function (event) {
+      var db = event.target.result;
+      var trans = db.transaction(storeName, "readwrite");
+      var store = trans.objectStore(storeName);
+      var putReq = store.put(data);
+
+      putReq.onsuccess = function () {
+        console.log("put data success");
+      };
+      trans.oncomplete = function () {
+        console.log("transaction complete");
+      };
+    };
+  }
+
   mapperSelect() {
     switch (this.MapperNumber) {
       case 0:
@@ -376,8 +448,8 @@ class NES {
       // 	this.mapper = new Mapper18(this);
       // 	break;
       case 19:
-      	this.mapper = new Mapper19(this);
-      	break;
+        this.mapper = new Mapper19(this);
+        break;
       // case 20:
       // 	// DiskSystem
       // 	//this.mapper = new Mapper20(this);

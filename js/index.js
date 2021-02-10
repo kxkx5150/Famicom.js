@@ -35,6 +35,17 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
 document.getElementById("resetButton").addEventListener("click", (e) => {
   nes.Reset();
 });
+document.getElementById("pauseButton").addEventListener("click", (e) => {
+  nes.pauseNes();
+});
+document.getElementById("saveButton").addEventListener("click", (e) => {
+  nes.saveNes();
+});
+document.getElementById("loadButton").addEventListener("click", (e) => {
+  nes.loadNes();
+});
+
+
 const ctrlMap1 = {
   arrowright: nes.INPUT.RIGHT,
   arrowleft: nes.INPUT.LEFT,

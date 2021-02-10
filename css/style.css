@@ -16,6 +16,13 @@ input {
   text-align: center;
   font-family: arial, sans-serif;
 }
+button:focus {outline:0;}
+.button{
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 0;
+}
 #output {
   width: 256px;
   height: 224px;
@@ -26,4 +33,17 @@ input {
   text-align: right;
   background: content-box;
   color: #999;
+}
+.inputfile {
+	width: 0.1px;
+	height: 0.1px;
+	opacity: 0;
+	overflow: hidden;
+	position: absolute;
+	z-index: -1;
+}
+.inputfile + label {
+  color: black;
+  background-color: dodgerblue;
+  display: inline-block;
 }

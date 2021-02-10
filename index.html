@@ -10,9 +10,19 @@
   </head>
   <body>
     <div class="ctrl_div">
-      enter=START shift=SELECT z=B a=A 
-      <input type="file" id="fileInput" />
-      <button id="resetButton">Reset</button>
+      <div id="input-group">
+        <span style="padding-right: 24px;">enter=START shift=SELECT z=B a=A </span>
+        <input type="file" name="file" id="fileInput" class="inputfile" />
+        <label for="fileInput" class="button">Choose a file</label>
+        <button id="pauseButton" class="button">Pause/Play</button>
+        <button id="resetButton" class="button">Reset</button>
+
+        <button id="saveButton" class="button" style="display: none;">Save</button>
+        <button id="loadButton" class="button" style="display: none;">Load</button>
+
+
+
+      </div>
     </div>
     <canvas id="output" width="256" height="224">
     <div>
