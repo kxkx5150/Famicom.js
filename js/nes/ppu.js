@@ -174,7 +174,7 @@ class PPU {
 
       if (this.PpuY === 240) {
         this.nes.DrawFlag = true;
-        this.ctx.putImageData(this.ImageData, 0, 0);
+        if(this.nes.speedCount <= 1)this.ctx.putImageData(this.ImageData, 0, 0);
         this.ScrollRegisterFlag = false;
         this.IO1[0x02] &= 0x1f;
         this.IO1[0x02] |= 0x80;

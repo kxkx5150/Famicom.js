@@ -5,6 +5,8 @@ class NES {
     this.cpuType = 2;
     ///////////////////////
     this.fps = 60;
+    this.speed = 1;
+    this.speedCount = 0;
     this.DB = null;
     this.sampleRate = 48000;
     this.fname = "";
@@ -113,6 +115,9 @@ class NES {
     this.Init_MMC5();
     this.Init_N163();
     this.initDB();
+
+    // this.startAnimating(80);
+
   }
   initNES(arybuf) {
     this.Reset(true);
@@ -126,6 +131,7 @@ class NES {
     this.ppu.init();
     this.cpu.init();
     this.mem.init();
+    this.speedCount = this.speed;
     return true;
   }
   cycle(arybuf, fname) {
@@ -165,18 +171,23 @@ class NES {
   }
   runCPU2(count) {
     this.DrawFlag = false;
+    this.speedCount = this.speed;
+
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
       const opcode = this.cpu.run();
       if (this.cpu.CPUClock < 1) return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
+
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
       this.cpu.exec(opcode);
-      if (count && !--count) {
-        console.log("break : " + count);
-        break;
+      if(this.DrawFlag){
+        --this.speedCount
+        if(this.speedCount > 0){
+          this.DrawFlag = false;
+        }
       }
     }
   }
@@ -354,10 +365,35 @@ class NES {
       this.io.crntCtrlState2 &= ~(1 << button) & 0xff;
     }
   }
-  saveNes() {
-    this.pause = true;
-    if (this.actx) this.actx.suspend();
-    cancelAnimationFrame(this.timerId);
+  setSpeed(vol){
+    this.speed = vol;
+    this.speedCount = vol;
+  }
+  frameCount = 0;
+  fpsInterval;
+  startTime;
+  now
+  then
+  elapsed;
+
+  startAnimating(fps) {
+    this.fpsInterval = 1000 / fps;
+    this.then = Date.now();
+    this.startTime = this.then;
+    this.animate();
+  }
+  animate() {
+    requestAnimationFrame(()=>{
+      this.animate();
+    });
+    this.now = Date.now();
+    this.elapsed = this.now - this.then;
+    if (this.elapsed > this.fpsInterval) {
+      this.then = this.now - (this.elapsed % this.fpsInterval);
+      var sinceStart = this.now - this.startTime;
+      var currentFps = Math.round((1000 / (sinceStart / ++this.frameCount)) * 100) / 100;
+      console.log(currentFps);
+    }
   }
 
 
@@ -436,10 +472,6 @@ class NES {
       };
     };
   }
-
-
-
-
   mapperSelect() {
     switch (this.MapperNumber) {
       case 0:
@@ -671,7 +703,6 @@ class NES {
     }
     if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
   };
-
   Read_N163_RAM = function () {
     var ret = this.N163_RAM[this.N163_Address & 0x7f];
     if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;

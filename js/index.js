@@ -45,7 +45,9 @@ document.getElementById("saveButton").addEventListener("click", (e) => {
 document.getElementById("loadButton").addEventListener("click", (e) => {
   nes.loadNes();
 });
-
+document.getElementById("speed").addEventListener("change", (e) => {
+  nes.setSpeed(e.target.value);
+});
 
 const ctrlMap1 = {
   arrowright: nes.INPUT.RIGHT,
@@ -106,3 +108,4 @@ resizeCanvas = () => {
   }, 1200);
 };
 resizeCanvas();
+

@@ -18,10 +18,14 @@ input {
 }
 button:focus {outline:0;}
 .button{
-  padding: 4px;
+  padding:2px 4px;
   border-radius: 4px;
   cursor: pointer;
   border: 0;
+}
+#speed{
+  vertical-align: middle;
+  margin-left: 18px;
 }
 #output {
   width: 256px;
@@ -33,6 +37,7 @@ button:focus {outline:0;}
   text-align: right;
   background: content-box;
   color: #999;
+  line-height: 22px;
 }
 .inputfile {
 	width: 0.1px;
