@@ -41,10 +41,17 @@ http://taotao54321.hatenablog.com/archive/category/NES
 解説サイトを読むより良いと思います。
 
 FaithJS  
-
 https://sairoutine.github.io/faithjs/public/
 
 <br><br><br>
+
+FaithJSと並び完成度の高いjsエミュ
+
+jsnes  
+https://github.com/bfirsh/jsnes
+
+<br><br><br>
+
 
 #### Credits  
 Thanks to the resources at [the nesdev wiki](http://wiki.nesdev.com/w/index.php/Nesdev_Wiki) and [NesJs](https://github.com/elzo-d/NesJs) for the test roms, documentation and some code snippets used for this.
