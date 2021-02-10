@@ -296,11 +296,11 @@ class CPU {
     this.cycles = 7;
     this.toIRQ = 0x00;
   }
-  initCpu() {
+  init() {
     this.reset();
     this.PC[0] = this.mem.Get16(0xfffc);
   }
-  runCpu(test) {
+  run(test) {
     const oldpc = this.PC[0];
     let instr = this.mem.Get(this.PC[0]++);
     this.CPUClock = this.opcodes[instr].cycle;
@@ -343,48 +343,6 @@ class CPU {
     console.log("zero     : " + this.zero);
     console.log("carry    : " + this.carry);
     console.log("");
-  }
-  getP(bFlag) {
-    let value = 0;
-
-    value |= this.negative ? 0x80 : 0;
-    value |= this.overflow ? 0x40 : 0;
-    value |= this.decimal ? 0x08 : 0;
-    value |= this.interrupt ? 0x04 : 0;
-    value |= this.zero ? 0x02 : 0;
-    value |= this.carry ? 0x01 : 0;
-    value |= 0x20;
-    value |= bFlag ? 0x10 : 0;
-
-    return value;
-  }
-  setP(value) {
-    this.negative = (value & 0x80) > 0;
-    this.overflow = (value & 0x40) > 0;
-    this.decimal = (value & 0x08) > 0;
-    this.interrupt = (value & 0x04) > 0;
-    this.zero = (value & 0x02) > 0;
-    this.carry = (value & 0x01) > 0;
-  }
-  setZandN(value) {
-    value &= 0xff;
-    this.zero = value === 0;
-    this.negative = value > 0x7f;
-  }
-  getSigned(value) {
-    if (value > 127) {
-      return -(256 - value);
-    }
-    return value;
-  }
-  doBranch(test, rel) {
-    if (test) {
-      this.CPUClock++;
-      if (this.PC[0] >> 8 !== (this.PC[0] + rel) >> 8) {
-        this.CPUClock++;
-      }
-      this.PC[0] += rel;
-    }
   }
   getAddr(mode) {
     switch (mode) {
@@ -921,6 +879,48 @@ class CPU {
         this.setZandN(this.X[0]);
         return;
       }
+    }
+  }
+  getP(bFlag) {
+    let value = 0;
+
+    value |= this.negative ? 0x80 : 0;
+    value |= this.overflow ? 0x40 : 0;
+    value |= this.decimal ? 0x08 : 0;
+    value |= this.interrupt ? 0x04 : 0;
+    value |= this.zero ? 0x02 : 0;
+    value |= this.carry ? 0x01 : 0;
+    value |= 0x20;
+    value |= bFlag ? 0x10 : 0;
+
+    return value;
+  }
+  setP(value) {
+    this.negative = (value & 0x80) > 0;
+    this.overflow = (value & 0x40) > 0;
+    this.decimal = (value & 0x08) > 0;
+    this.interrupt = (value & 0x04) > 0;
+    this.zero = (value & 0x02) > 0;
+    this.carry = (value & 0x01) > 0;
+  }
+  setZandN(value) {
+    value &= 0xff;
+    this.zero = value === 0;
+    this.negative = value > 0x7f;
+  }
+  getSigned(value) {
+    if (value > 127) {
+      return -(256 - value);
+    }
+    return value;
+  }
+  doBranch(test, rel) {
+    if (test) {
+      this.CPUClock++;
+      if (this.PC[0] >> 8 !== (this.PC[0] + rel) >> 8) {
+        this.CPUClock++;
+      }
+      this.PC[0] += rel;
     }
   }
 }

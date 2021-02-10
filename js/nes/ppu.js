@@ -122,7 +122,7 @@ class PPU {
     this.Sprite0Line = false;
     this.clearArray();
   }
-  PpuInit() {
+  init() {
     this.ScrollRegisterFlag = false;
     this.PPUAddressRegisterFlag = false;
     this.HScrollTmp = 0;

@@ -1,6 +1,9 @@
 var DEBUG = false;
 class NES {
   constructor(canvas) {
+    ////   CPU type    ////
+    this.cpuType = 2;
+    ///////////////////////
     this.fps = 60;
     this.sampleRate = 48000;
     this.canvas = canvas;
@@ -38,10 +41,6 @@ class NES {
     this.mem = new RAM(this);
     this.apu = new APU(this);
     this.ppu = new PPU(this, this.ctx);
-
-    //// CPU type Select////
-    this.cpuType = 2;
-    ///////////////////////
 
     this.cpu1 = new CPU(this, this.mem);
     this.cpu2 = new CPU2(this, this.mem);
@@ -119,10 +118,9 @@ class NES {
     const flg = this.mapperSelect();
     if(!flg)return;
     this.mapper.Init();
-    this.ppu.PpuInit();
-    this.cpu2.initCpu();
-    this.cpu.initCpu();
-    this.mem.initMem();
+    this.ppu.init();
+    this.cpu.init();
+    this.mem.init();
     return true;
   }
   cycle(arybuf) {
@@ -152,7 +150,7 @@ class NES {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      const opcode = this.cpu.runCpu();
+      const opcode = this.cpu.run();
       if(this.cpu.CPUClock < 1)return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
@@ -169,11 +167,11 @@ class NES {
     this.DrawFlag = false;
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      if (!this.cpu.runCpu()) break;
+      if (!this.cpu.run()) break;
       if(this.cpu.CPUClock < 1)return;
       this.mapper.CPUSync(this.cpu.CPUClock);
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.ppu.PpuRun();
+      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
     }
   }
@@ -516,6 +514,7 @@ class NES {
       // 	this.mapper = new Mapper19(this);
       // 	break;
       default:
+        console.log(this.MapperNumber);
         this.mapper = new Mapper0(this);
         return false;
     }

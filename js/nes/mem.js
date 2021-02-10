@@ -6,7 +6,7 @@ class RAM {
     this.ram = this.ram1;
     this.reset();
   }
-  initMem(){
+  init(){
     if(this.nes.cpuType === 2){
       console.log("CPU type2 Array Memory");
       this.ram = this.ram2;
