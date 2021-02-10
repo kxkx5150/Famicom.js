@@ -4,6 +4,7 @@ class RAM {
     this.ram2 = new Array(0x800);
     this.ram1 = new Uint8Array(0x800);
     this.ram = this.ram1;
+    this.timerID = null;
     this.reset();
   }
   init(){
@@ -199,6 +200,10 @@ class RAM {
         this.nes.mapper.WriteLow(address, data);
         return;
       case 0x6000:
+        clearTimeout(this.timerID);
+        this.timerID = setTimeout(()=>{
+          this.storeSram();
+        },2000)
         this.nes.mapper.WriteSRAM(address, data);
         return;
       case 0x8000:
@@ -208,6 +213,10 @@ class RAM {
         this.nes.mapper.Write(address, data);
         return;
     }
+  }
+  storeSram(){
+    console.log("save sram");
+    this.nes.createDbItem(this.nes.fname,this.nes.SRAM)
   }
   reset(hard){
     for (var i = 0; i < this.ram.length; i++) {

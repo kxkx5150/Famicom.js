@@ -5,7 +5,9 @@ class NES {
     this.cpuType = 2;
     ///////////////////////
     this.fps = 60;
+    this.DB = null;
     this.sampleRate = 48000;
+    this.fname = "";
     this.pause = false;
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
@@ -126,11 +128,12 @@ class NES {
     this.mem.init();
     return true;
   }
-  cycle(arybuf) {
+  cycle(arybuf, fname) {
     if (!arybuf) return;
     cancelAnimationFrame(this.timerId);
     const flg = this.initNES(arybuf);
-    if (flg) this.update();
+    if (flg) this.checkSramStore(fname);
+    this.fname = fname;
   }
   update(count) {
     if (count) {
@@ -356,61 +359,86 @@ class NES {
     if (this.actx) this.actx.suspend();
     cancelAnimationFrame(this.timerId);
   }
-  loadNes() {
-    var nes = this;
-    var dbName = "saveDB";
-    var storeName = "saveStore";
-    var keyValue = "1";
-    var openReq = indexedDB.open(dbName);
 
-    openReq.onsuccess = function (event) {
-      var db = event.target.result;
-      var trans = db.transaction(storeName, "readonly");
-      var store = trans.objectStore(storeName);
-      var getReq = store.get(keyValue);
 
-      getReq.onsuccess = function (event) {};
-    };
-  }
+
+
+
+
   initDB() {
     var dbName = "saveDB";
-    var dbVersion = 1.1;
     var storeName = "saveStore";
+    var dbVersion = 1.1;
     var openReq = indexedDB.open(dbName, dbVersion);
-
-    openReq.onupgradeneeded = function (event) {
+    openReq.onupgradeneeded = (e) => {
       console.log("indexedDB create store");
-      var db = event.target.result;
+      var db = e.target.result;
       db.createObjectStore(storeName, { keyPath: "id" });
     };
-    openReq.onsuccess = function (event) {
+    openReq.onsuccess = (e) => {
       console.log("indexedDB open");
-      var db = event.target.result;
+      var db = e.target.result;
+      this.DB = db;
       db.close();
     };
-    openReq.onerror = function (event) {
+    openReq.onerror = (e) => {
       console.log("indexedDB open error");
     };
   }
-  createDbItem(json) {
+  checkSramStore(fname) {
+    let cb = (e) => {
+      if (e && e.target && e.target.result && e.target.result.sram && e.target.result.sram.length > 0) {
+        this.SRAM = e.target.result.sram;
+        console.log("set sram");
+      }
+      this.update();
+    };
+    if (this.DB) {
+      this.loadNes(fname, cb);
+    } else {
+      this.update();
+    }
+  }
+  loadNes(id, cb) {
     var dbName = "saveDB";
     var storeName = "saveStore";
-    var data = { id: "1", json: json };
+    var keyValue = id;
     var openReq = indexedDB.open(dbName);
-    openReq.onsuccess = function (event) {
-      var db = event.target.result;
+    openReq.onsuccess = (e) => {
+      var db = e.target.result;
+      var trans = db.transaction(storeName, "readonly");
+      var store = trans.objectStore(storeName);
+      var getReq = store.get(keyValue);
+      getReq.onsuccess = (e) => {
+        cb(e);
+      };
+      getReq.onerror = (e) => {
+        cb();
+      };
+    };
+    openReq.onerror = (e) => {
+      cb();
+    };
+  }
+  createDbItem(id, obj) {
+    var dbName = "saveDB";
+    var storeName = "saveStore";
+    var data = { id: id, sram: obj };
+    var openReq = indexedDB.open(dbName);
+    openReq.onsuccess = function (e) {
+      var db = e.target.result;
       var trans = db.transaction(storeName, "readwrite");
       var store = trans.objectStore(storeName);
       var putReq = store.put(data);
-
-      putReq.onsuccess = function () {
-        console.log("put data success");
-      };
+      putReq.onsuccess = function () {};
       trans.oncomplete = function () {
-        console.log("transaction complete");
+        console.log("save sram");
       };
     };
   }
+
+
+
 
   mapperSelect() {
     switch (this.MapperNumber) {
@@ -592,13 +620,11 @@ class NES {
     }
     return true;
   }
-
   Read_N163_RAM = function () {
     var ret = this.N163_RAM[this.N163_Address & 0x7f];
     if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
     return ret;
   };
-  /* N163 */
   Init_N163 = function () {
     var i;
     for (i = 0; i < this.N163_RAM.length; i++) this.N163_RAM[i] = 0x00;
@@ -651,7 +677,6 @@ class NES {
     if ((this.N163_Address & 0x80) === 0x80) this.N163_Address = ((this.N163_Address & 0x7f) + 1) | 0x80;
     return ret;
   };
-
   Count_N163 = function (clock) {
     this.N163_Clock += clock;
     var cl = (this.N163_ch + 1) * 15;
@@ -664,7 +689,6 @@ class NES {
       }
     }
   };
-
   Out_N163 = function () {
     var all_out = 0;
 
@@ -676,7 +700,6 @@ class NES {
     }
     return all_out << 2;
   };
-
   Init_MMC5() {
     this.MMC5_FrameSequenceCounter = 0;
     this.MMC5_FrameSequence = 0;

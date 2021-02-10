@@ -25,10 +25,11 @@ window.addEventListener(
 );
 document.getElementById("fileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
+  if(!file)return;
   var fileReader = new FileReader();
   fileReader.onload = function () {
     if(!this.result)return;
-    nes.cycle(this.result);
+    nes.cycle(this.result,file.name);
   };
   fileReader.readAsArrayBuffer(file);
 });
