@@ -115,8 +115,6 @@ class NES {
     this.Init_MMC5();
     this.Init_N163();
     this.initDB();
-
-
   }
   initNES(arybuf) {
     this.Reset(true);
@@ -134,8 +132,8 @@ class NES {
     this.speedCount = this.speed;
     return true;
   }
-  resetButton(){  
-    this.cycle(this.arybuf,this.fname);  
+  resetButton() {
+    this.cycle(this.arybuf, this.fname);
   }
   cycle(arybuf, fname) {
     if (!arybuf) return;
@@ -148,7 +146,7 @@ class NES {
     if (count) {
       this.runCPU(count);
     } else {
-      this.startAnimating(60)
+      this.startAnimating(this.fps);
     }
   }
   pauseNes() {
@@ -183,9 +181,9 @@ class NES {
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
       this.cpu.exec(opcode);
-      if(this.DrawFlag){
-        --this.speedCount
-        if(this.speedCount > 0){
+      if (this.DrawFlag) {
+        --this.speedCount;
+        if (this.speedCount > 0) {
           this.DrawFlag = false;
         }
       }
@@ -365,19 +363,16 @@ class NES {
       this.io.crntCtrlState2 &= ~(1 << button) & 0xff;
     }
   }
-  setSpeed(vol){
+  setSpeed(vol) {
     this.speed = vol;
     this.speedCount = vol;
   }
 
-
-
-
   frameCount = 0;
   fpsInterval;
   startTime;
-  now
-  then
+  now;
+  then;
   elapsed;
   startAnimating(fps) {
     this.fpsInterval = 1000 / fps;
@@ -385,8 +380,12 @@ class NES {
     this.startTime = this.then;
     this.animate();
   }
+  setAnimateFPS(fps) {
+    this.fps = fps;
+    this.fpsInterval = 1000 / fps;
+  }
   animate() {
-    this.timerId = requestAnimationFrame(()=>{
+    this.timerId = requestAnimationFrame(() => {
       this.animate();
     });
     this.now = Date.now();
@@ -395,16 +394,30 @@ class NES {
       this.then = this.now - (this.elapsed % this.fpsInterval);
       var sinceStart = this.now - this.startTime;
       var fps = Math.round((1000 / (sinceStart / ++this.frameCount)) * 100) / 100;
-      // console.log(fps);
       this.runCPU();
+      // console.log(fps);
     }
   }
-
-
-
-
-
-
+  setFPS(val) {
+    val -= 0;
+    switch (val) {
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+        this.setSpeed(1);
+        this.setAnimateFPS(val * 15);
+        break;
+      case 5:
+      case 6:
+      case 7:
+        this.setSpeed(val - 3);
+        this.setAnimateFPS(60);
+        break;
+      default:
+        break;
+    }
+  }
   initDB() {
     var dbName = "saveDB";
     var storeName = "saveStore";
@@ -506,8 +519,8 @@ class NES {
         this.mapper = new Mapper10(this);
         break;
       case 16:
-      	this.mapper = new Mapper16(this);
-      	break;
+        this.mapper = new Mapper16(this);
+        break;
       // case 18:
       // 	this.mapper = new Mapper18(this);
       // 	break;

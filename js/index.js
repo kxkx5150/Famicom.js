@@ -1,7 +1,6 @@
 const canvas = document.getElementById("output");
 const nes = new NES(canvas);
 
-
 window.addEventListener(
   "resize",
   (e) => {
@@ -25,11 +24,11 @@ window.addEventListener(
 );
 document.getElementById("fileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
-  if(!file)return;
+  if (!file) return;
   var fileReader = new FileReader();
   fileReader.onload = function () {
-    if(!this.result)return;
-    nes.cycle(this.result,file.name);
+    if (!this.result) return;
+    nes.cycle(this.result, file.name);
   };
   fileReader.readAsArrayBuffer(file);
 });
@@ -46,7 +45,7 @@ document.getElementById("loadButton").addEventListener("click", (e) => {
   nes.loadNes();
 });
 document.getElementById("speed").addEventListener("change", (e) => {
-  nes.setSpeed(e.target.value);
+  nes.setFPS(e.target.value);
 });
 
 const ctrlMap1 = {
@@ -108,4 +107,3 @@ resizeCanvas = () => {
   }, 1200);
 };
 resizeCanvas();
-

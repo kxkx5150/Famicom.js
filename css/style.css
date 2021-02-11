@@ -16,16 +16,19 @@ input {
   text-align: center;
   font-family: arial, sans-serif;
 }
-button:focus {outline:0;}
-.button{
-  padding:2px 4px;
+button:focus {
+  outline: 0;
+}
+.button {
+  padding: 2px 4px;
   border-radius: 4px;
   cursor: pointer;
   border: 0;
 }
-#speed{
+#speed {
   vertical-align: middle;
   margin-left: 18px;
+  width: 150px;
 }
 #output {
   width: 256px;
@@ -40,12 +43,12 @@ button:focus {outline:0;}
   line-height: 22px;
 }
 .inputfile {
-	width: 0.1px;
-	height: 0.1px;
-	opacity: 0;
-	overflow: hidden;
-	position: absolute;
-	z-index: -1;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: -1;
 }
 .inputfile + label {
   color: black;
