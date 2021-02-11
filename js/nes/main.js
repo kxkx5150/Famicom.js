@@ -1,8 +1,10 @@
-var DEBUG = false;
 class NES {
   constructor(canvas) {
     ////   CPU type    ////
     this.cpuType = 2;
+    // cpu1 cycles = 26554
+    // cpu2 cycles = 26566
+    // nestest     = 26554
     ///////////////////////
     this.fps = 60;
     this.speed = 1;
@@ -34,6 +36,13 @@ class NES {
     this.FourScreen = false;
     this.MapperNumber = -1;
 
+    this.frameCount = 0;
+    this.fpsInterval;
+    this.startTime;
+    this.now;
+    this.then;
+    this.elapsed;
+    
     this.SRAM = new Array(0x2000);
     this.ROM = new Array(4);
     this.PRGROM_STATE = new Array(4);
@@ -161,30 +170,20 @@ class NES {
       this.update();
     }
   }
-
-
-
   runCPU(count) {
-    if (this.cpuType === 2) {
-      this.runCPU2(count);
-    } else {
-      this.runCPU1(count);
-    }
-  }
-  runCPU2(count) {
     this.DrawFlag = false;
     this.speedCount = this.speed;
 
     while (!this.DrawFlag) {
       if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      const opcode = this.cpu.run();
+      const opobj = this.cpu.run();
       if (this.cpu.CPUClock < 1) return;
       this.mapper.CPUSync(this.cpu.CPUClock);
       this.ppu.PpuRun();
-
       if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
       this.cpu.CPUClock = 0;
-      this.cpu.exec(opcode);
+
+      this.cpu.exec(opobj);
       if (this.DrawFlag) {
         --this.speedCount;
         if (this.speedCount > 0) {
@@ -192,18 +191,6 @@ class NES {
         }
       }
       if(this.BREAK)break;
-    }
-  }
-  runCPU1(count) {
-    this.DrawFlag = false;
-    while (!this.DrawFlag) {
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
-      if (!this.cpu.run()) break;
-      if (this.cpu.CPUClock < 1) return;
-      this.mapper.CPUSync(this.cpu.CPUClock);
-      this.ppu.PpuRun();
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
-      this.cpu.CPUClock = 0;
     }
   }
   Reset(hard) {
@@ -230,11 +217,12 @@ class NES {
     this.irq.reset(hard);
     this.mem.reset(hard);
     this.ppu.reset(hard);
-    this.ppu.clearCanvas();
+    this.ppu.initCanvas();
     this.apu.reset();
     this.StorageClear();
 
     this.pause = false;
+    this.frameCount = 0;
   }
   onAudioSample(l, r) {
     if (!this.actx) return;
@@ -372,13 +360,6 @@ class NES {
     this.speed = vol;
     this.speedCount = vol;
   }
-
-  frameCount = 0;
-  fpsInterval;
-  startTime;
-  now;
-  then;
-  elapsed;
   startAnimating(fps) {
     this.fpsInterval = 1000 / fps;
     this.then = Date.now();
@@ -570,9 +551,9 @@ class NES {
       // case 65:
       // 	this.mapper = new Mapper65(this);
       // 	break;
-      // case 66:
-      // 	this.mapper = new Mapper66(this);
-      // 	break;
+      case 66:
+      	this.mapper = new Mapper66(this);
+      	break;
       // case 67:
       // 	this.mapper = new Mapper67(this);
       // 	break;

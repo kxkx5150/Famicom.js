@@ -25,6 +25,7 @@ class CPU2 {
     this.toIRQ = 0x00;
     this.CPUClock = 0;
     this.cycles = 0;
+    this.total = 0;
     this.CycleTable = [
       7,
       6,
@@ -332,14 +333,20 @@ class CPU2 {
     var oldpc = this.PC;
     var opcode = this.mem.Get(this.PC++);
     this.CPUClock += this.CycleTable[opcode];
-    if (test) this.showInfo(oldpc, opcode);
-    return opcode;
+
+    const opobj = {};
+    opobj.oldpc = oldpc;
+    opobj.opcode = opcode;
+
+    if (test) this.showInfo(opobj);
+    this.total+=this.CPUClock;
+    return opobj;
   }
-  exec(opcode) {
-    this.execInstruction(opcode);
+  exec(opobj) {
+    this.execInstruction(opobj.opcode);
   }
-  showInfo(oldpc, opcode) {
-    console.log(oldpc.toString(16).toUpperCase() + " : " + opcode);
+  showInfo(opobj) {
+    console.log(opobj.oldpc.toString(16).toUpperCase() + " : " + opobj.opcode);
   }
   showRegisters() {
     console.log("========= cpu_info =========");

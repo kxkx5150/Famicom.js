@@ -6,9 +6,7 @@ class Mapper5 extends Base{
 		this.MAPPER_EXRAM = new Array(8);
 		this.MAPPER_EXRAM2 = new Array(1024);
 		this.MAPPER_EXRAM3 = new Array(1024);
-
 		this.MAPPER_CHR_REG = new Array(2);
-
 		this.MAPPER_IRQ = 0;
 		this.MAPPER_IRQ_STATUS = 0;
 	}
@@ -367,8 +365,7 @@ class Mapper5 extends Base{
 			var tmpVRAM = this.nes.ppu.VRAM;
 			var tmpPaletteArray = this.nes.ppu.PaletteArray;
 			var tmpSPBitArray = this.nes.ppu.SPBitArray;
-
-			var tmpBgLineBuffer = this.nes.BgLineBuffer;
+			var tmpBgLineBuffer = this.nes.ppu.BgLineBuffer;
 			var nameAddr = 0x0000;
 			var tmpy = (this.nes.ppu.PpuY + this.MAPPER_REG[0x0201]) % 240;
 			nameAddr += (tmpy >>> 3) << 5;

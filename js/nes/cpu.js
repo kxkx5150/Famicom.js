@@ -19,6 +19,7 @@ class CPU {
     this.toIRQ = 0x00;
     this.CPUClock = 7;
     this.cycles = 0;
+    this.total = 0;
     this.opcodes = [
       { int: 0, hex: "0", op: "BRK", adm: "IMP", cycle: 7 },
       { int: 1, hex: "1", op: "ORA", adm: "IZX", cycle: 6 },
@@ -301,30 +302,36 @@ class CPU {
     this.PC[0] = this.mem.Get16(0xfffc);
   }
   run(test) {
-    const oldpc = this.PC[0];
-    let instr = this.mem.Get(this.PC[0]++);
-    this.CPUClock = this.opcodes[instr].cycle;
     const val = this.nes.irq.checkCpuIrqWanted();
     if (val === "nmi") {
-      this.PC[0]--;
       this.nes.irq.nmiWanted = false;
-      instr = 0x100;
-      this.CPUClock = 7;
+      const opobj = this.opcodes[0x100];
+      opobj.addr = "IMP";
+      this.CPUClock += 7;
+      this.execInstruction(opobj.op, opobj.addr);
     } else if (val === "irq") {
-      this.PC[0]--;
       this.nes.irq.irqWanted = false;
       this.toIRQ = 0x00;
-      instr = 0x101;
-      this.CPUClock = 7;
+      const opobj = this.opcodes[0x101];
+      opobj.addr = "IMP";
+      this.CPUClock += 7;
+      this.execInstruction(opobj.op, opobj.addr);
     }
+    const oldpc = this.PC[0];
+    var instr = this.mem.Get(this.PC[0]++);
     const opobj = this.opcodes[instr];
-    let addr = this.getAddr(opobj.adm);
-    this.execInstruction(opobj.op, addr);
-    if(test)this.showInfo(oldpc,opobj,addr)
-    return true;
+    this.CPUClock += this.opcodes[instr].cycle;
+    opobj.addr = this.getAddr(opobj.adm);
+    opobj.oldpc = oldpc;
+    if (test) this.showInfo(opobj);
+    this.total+=this.CPUClock;
+    return opobj;
   }
-  showInfo(oldpc,opobj,addr){
-    console.log(oldpc.toString(16).toUpperCase() + " : " +  opobj.op);
+  exec(opobj) {
+    this.execInstruction(opobj.op, opobj.addr);
+  }
+  showInfo(opobj) {
+    console.log(opobj.oldpc.toString(16).toUpperCase() + " : " + opobj.op);
   }
   showRegisters() {
     console.log("========= cpu_info =========");

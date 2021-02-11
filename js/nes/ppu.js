@@ -414,9 +414,6 @@ class PPU {
     }
     this.ctx.putImageData(this.ImageData, 0, 0);
   }
-  clearCanvas() {
-    this.ctx.clearRect(0, 0, this.width, this.height);
-  }
   clearArray() {
     for (var i = 0; i < this.IO1.length; i++) {
       this.IO1[i] = 0;
