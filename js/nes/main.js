@@ -116,11 +116,11 @@ class NES {
     this.Init_N163();
     this.initDB();
 
-    // this.startAnimating(80);
 
   }
   initNES(arybuf) {
     this.Reset(true);
+    this.arybuf = arybuf;
     const Rom = this.SetRom(arybuf);
     this.StorageClear();
     this.StorageInit(Rom);
@@ -134,6 +134,9 @@ class NES {
     this.speedCount = this.speed;
     return true;
   }
+  resetButton(){  
+    this.cycle(this.arybuf,this.fname);  
+  }
   cycle(arybuf, fname) {
     if (!arybuf) return;
     cancelAnimationFrame(this.timerId);
@@ -145,10 +148,7 @@ class NES {
     if (count) {
       this.runCPU(count);
     } else {
-      this.runCPU();
-      this.timerId = requestAnimationFrame(() => {
-        this.update();
-      });
+      this.startAnimating(60)
     }
   }
   pauseNes() {
@@ -369,13 +369,16 @@ class NES {
     this.speed = vol;
     this.speedCount = vol;
   }
+
+
+
+
   frameCount = 0;
   fpsInterval;
   startTime;
   now
   then
   elapsed;
-
   startAnimating(fps) {
     this.fpsInterval = 1000 / fps;
     this.then = Date.now();
@@ -383,7 +386,7 @@ class NES {
     this.animate();
   }
   animate() {
-    requestAnimationFrame(()=>{
+    this.timerId = requestAnimationFrame(()=>{
       this.animate();
     });
     this.now = Date.now();
@@ -391,8 +394,9 @@ class NES {
     if (this.elapsed > this.fpsInterval) {
       this.then = this.now - (this.elapsed % this.fpsInterval);
       var sinceStart = this.now - this.startTime;
-      var currentFps = Math.round((1000 / (sinceStart / ++this.frameCount)) * 100) / 100;
-      console.log(currentFps);
+      var fps = Math.round((1000 / (sinceStart / ++this.frameCount)) * 100) / 100;
+      // console.log(fps);
+      this.runCPU();
     }
   }
 
@@ -501,9 +505,9 @@ class NES {
       case 10:
         this.mapper = new Mapper10(this);
         break;
-      // case 16:
-      // 	this.mapper = new Mapper16(this);
-      // 	break;
+      case 16:
+      	this.mapper = new Mapper16(this);
+      	break;
       // case 18:
       // 	this.mapper = new Mapper18(this);
       // 	break;

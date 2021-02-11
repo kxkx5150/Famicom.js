@@ -34,7 +34,7 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   fileReader.readAsArrayBuffer(file);
 });
 document.getElementById("resetButton").addEventListener("click", (e) => {
-  nes.Reset();
+  nes.resetButton();
 });
 document.getElementById("pauseButton").addEventListener("click", (e) => {
   nes.pauseNes();

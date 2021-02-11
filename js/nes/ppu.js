@@ -101,13 +101,6 @@ class PPU {
     ];
     this.ctx = ctx;
     this.ImageData = this.ctx.createImageData(this.width, this.height);
-    const buf = new ArrayBuffer(this.ImageData.data.length);
-    this.buf8 = new Uint8ClampedArray(buf);
-    this.buf32 = new Uint32Array(buf);
-    // const color = (255 << 24) | (255 << 16)  | (255 << 8) | 255;
-    // for (let y = 0; y < height*width; y++)buf32[y] = color;
-    // this.ImageData.data.set(buf8);
-    // this.ctx.putImageData(this.ImageData, 0, 0);
     this.initCanvas();
     this.clearArray();
   }

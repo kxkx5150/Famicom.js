@@ -366,11 +366,11 @@ class Mapper5 extends Base{
 
 			var tmpVRAM = this.nes.ppu.VRAM;
 			var tmpPaletteArray = this.nes.ppu.PaletteArray;
-			var tmpSPBitArray = this.nes.nes.SPBitArray;
+			var tmpSPBitArray = this.nes.ppu.SPBitArray;
 
 			var tmpBgLineBuffer = this.nes.BgLineBuffer;
 			var nameAddr = 0x0000;
-			var tmpy = (this.nes.PpuY + this.MAPPER_REG[0x0201]) % 240;
+			var tmpy = (this.nes.ppu.PpuY + this.MAPPER_REG[0x0201]) % 240;
 			nameAddr += (tmpy >>> 3) << 5;
 			var iy = tmpy & 0x07;
 
