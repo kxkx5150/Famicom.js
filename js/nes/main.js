@@ -7,6 +7,7 @@ class NES {
     this.fps = 60;
     this.speed = 1;
     this.speedCount = 0;
+    this.BREAK = false;
     this.DB = null;
     this.sampleRate = 48000;
     this.fname = "";
@@ -160,6 +161,9 @@ class NES {
       this.update();
     }
   }
+
+
+
   runCPU(count) {
     if (this.cpuType === 2) {
       this.runCPU2(count);
@@ -187,6 +191,7 @@ class NES {
           this.DrawFlag = false;
         }
       }
+      if(this.BREAK)break;
     }
   }
   runCPU1(count) {
@@ -396,6 +401,8 @@ class NES {
       var fps = Math.round((1000 / (sinceStart / ++this.frameCount)) * 100) / 100;
       this.runCPU();
       // console.log(fps);
+      if(this.BREAK)cancelAnimationFrame(this.timerId);
+
     }
   }
   setFPS(val) {

@@ -55,3 +55,9 @@ button:focus {
   background-color: dodgerblue;
   display: inline-block;
 }
+.github a{
+  float: left;
+  color: cornflowerblue;
+  text-decoration: none;
+  font-size: 12px;
+}

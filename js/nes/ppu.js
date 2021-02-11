@@ -101,10 +101,11 @@ class PPU {
     ];
     this.ctx = ctx;
     this.ImageData = this.ctx.createImageData(this.width, this.height);
+    this.framebuffer_u32 = new Uint32Array(this.ImageData.data.buffer);
     this.initCanvas();
     this.clearArray();
   }
-  reset(){
+  reset() {
     this.ScrollRegisterFlag = false;
     this.PPUAddressRegisterFlag = false;
     this.HScrollTmp = 0;
@@ -145,6 +146,7 @@ class PPU {
   PpuRun() {
     var tmpx = this.PpuX;
     this.PpuX += this.nes.cpu.CPUClock * 3;
+    const fb = this.framebuffer_u32;
 
     while (this.PpuX >= 341) {
       var IsScreenEnable = (this.IO1[0x01] & 0x08) === 0x08;
@@ -167,13 +169,14 @@ class PPU {
 
       if (this.PpuY === 240) {
         this.nes.DrawFlag = true;
-        if(this.nes.speedCount <= 1)this.ctx.putImageData(this.ImageData, 0, 0);
+        if (this.nes.speedCount <= 1) this.ctx.putImageData(this.ImageData, 0, 0);
+
         this.ScrollRegisterFlag = false;
         this.IO1[0x02] &= 0x1f;
         this.IO1[0x02] |= 0x80;
         if ((this.IO1[0x00] & 0x80) === 0x80) this.nes.irq.nmiWanted = true;
         continue;
-      }else if (this.PpuY < 240) {
+      } else if (this.PpuY < 240) {
         var p;
         var tmpDist;
         var tmpPal;
@@ -184,10 +187,9 @@ class PPU {
             this.BuildBGLine();
             this.BuildSpriteLine();
             tmpDist = (this.PpuY - 8) << 10;
-            const imgdata = this.ImageData.data;
             for (p = 0; p < 256; p++, tmpDist += 4) {
               tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
-              this.setImageData(imgdata, tmpDist, tmpPal);
+              this.setImageData(fb,tmpDist, tmpPal);
             }
           } else {
             for (p = 0; p < 264; p++) this.BgLineBuffer[p] = 0x10;
@@ -203,9 +205,8 @@ class PPU {
         } else if (8 <= this.PpuY && this.PpuY < 232) {
           tmpDist = (this.PpuY - 8) << 10;
           tmpPal = this.PaletteTable[this.Palette[0x10]];
-          const imgdata = this.ImageData.data;
           for (p = 0; p < 256; p++, tmpDist += 4) {
-            this.setImageData(imgdata, tmpDist, tmpPal);
+            this.setImageData(fb,tmpDist, tmpPal);
           }
         }
       }
@@ -221,10 +222,8 @@ class PPU {
       }
     }
   }
-  setImageData(data, dist, plt) {
-    data[dist] = plt[0];
-    data[dist + 1] = plt[1];
-    data[dist + 2] = plt[2];
+  setImageData(fb,dist, plt) {
+    fb[dist / 4] = (255 << 24) | (plt[2] << 16) | (plt[1] << 8) | plt[0];
   }
   BuildBGLine() {
     var p;
@@ -415,7 +414,7 @@ class PPU {
     }
     this.ctx.putImageData(this.ImageData, 0, 0);
   }
-  clearCanvas(){
+  clearCanvas() {
     this.ctx.clearRect(0, 0, this.width, this.height);
   }
   clearArray() {
