@@ -127,7 +127,6 @@ class PPU {
     for (var i = 0; i < this.Palette.length; i++) {
       this.Palette[i] = 0x0f;
     }
-    this.SpriteLineBuffer = new Array(256);
     for (var i = 0; i < this.SpriteLineBuffer.length; i++) {
       this.SpriteLineBuffer[i] = 0;
     }
@@ -165,6 +164,7 @@ class PPU {
       } else if (this.PpuY < 240) {
         this.renderFrame();
       }
+      if(this.nes.BRAK)break;
     }
 
     if (this.Sprite0Line && (this.IO1[0x02] & 0x40) !== 0x40) {
@@ -177,10 +177,10 @@ class PPU {
       }
     }
   }
-  renderFrame(){
+  renderFrame() {
     if (this.IsScreenEnable || this.IsSpriteEnable) {
       this.PPUAddress = (this.PPUAddress & 0xfbe0) | (this.PPUAddressBuffer & 0x041f);
-  
+
       if (8 <= this.PpuY && this.PpuY < 232) {
         this.BuildBGLine();
         this.BuildSpriteLine();
@@ -188,13 +188,13 @@ class PPU {
         const fb = this.framebuffer_u32;
         for (var p = 0; p < 256; p++, tmpDist += 4) {
           let tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
-          this.setImageData(fb,tmpDist, tmpPal);
+          this.setImageData(fb, tmpDist, tmpPal);
         }
       } else {
         for (var p = 0; p < 264; p++) this.BgLineBuffer[p] = 0x10;
         this.BuildSpriteLine();
       }
-  
+
       if ((this.PPUAddress & 0x7000) === 0x7000) {
         this.PPUAddress &= 0x8fff;
         if ((this.PPUAddress & 0x03e0) === 0x03a0) this.PPUAddress = (this.PPUAddress ^ 0x0800) & 0xfc1f;
@@ -206,11 +206,11 @@ class PPU {
       const fb = this.framebuffer_u32;
       let tmpPal = this.PaletteTable[this.Palette[0x10]];
       for (var p = 0; p < 256; p++, tmpDist += 4) {
-        this.setImageData(fb,tmpDist, tmpPal);
+        this.setImageData(fb, tmpDist, tmpPal);
       }
     }
   }
-  inVblank(){
+  inVblank() {
     this.nes.DrawFlag = true;
     if (this.nes.speedCount <= 1) this.ctx.putImageData(this.ImageData, 0, 0);
     this.ScrollRegisterFlag = false;
@@ -218,14 +218,14 @@ class PPU {
     this.IO1[0x02] |= 0x80;
     if ((this.IO1[0x00] & 0x80) === 0x80) this.nes.irq.nmiWanted = true;
   }
-  postRender(){
+  postRender() {
     this.PpuY = 0;
     if (this.IsScreenEnable || this.IsSpriteEnable) {
       this.PPUAddress = this.PPUAddressBuffer;
     }
     this.IO1[0x02] &= 0x7f;
   }
-  setImageData(fb,dist, plt) {
+  setImageData(fb, dist, plt) {
     fb[dist / 4] = (255 << 24) | (plt[2] << 16) | (plt[1] << 8) | plt[0];
   }
   BuildBGLine() {
@@ -271,62 +271,56 @@ class PPU {
   BuildSpriteLine() {
     this.nes.mapper.BuildSpriteLine();
   }
+  get isBigSize(){
+    return (this.IO1[0x00] & 0x20) === 0x20 ? 16 : 8;
+  }
   BuildSpriteLine_SUB() {
-    var tmpBgLineBuffer = this.BgLineBuffer;
-    var tmpIsSpriteClipping = (this.IO1[0x01] & 0x04) === 0x04 ? 0 : 8;
+    var SpriteClipping = (this.IO1[0x01] & 0x04) === 0x04 ? 0 : 8;
 
     if ((this.IO1[0x01] & 0x10) === 0x10) {
-      var tmpSpLine = this.SpriteLineBuffer;
-      for (var p = 0; p < 256; p++) tmpSpLine[p] = 256;
-
+      var tmpSpLine = this.SpriteLineBuffer;tmpSpLine.fill(256)
       var tmpSpRAM = this.SPRITE_RAM;
-      var tmpBigSize = (this.IO1[0x00] & 0x20) === 0x20 ? 16 : 8;
-      var tmpSpPatternTableAddress = (this.IO1[0x00] & 0x08) << 9;
-      var tmpVRAM = this.VRAM;
-      var tmpSPBitArray = this.SPBitArray;
+      var spptableaddr = (this.IO1[0x00] & 0x08) << 9;
       var lineY = this.PpuY;
       var count = 0;
 
       for (var i = 0; i <= 252; i += 4) {
         var isy = tmpSpRAM[i] + 1;
-        if (isy > lineY || isy + tmpBigSize <= lineY) continue;
-
+        if (isy > lineY || isy + this.isBigSize <= lineY) continue;
         if (i === 0) this.Sprite0Line = true;
-
         if (++count === 9) break;
+
+        var attr = tmpSpRAM[i + 2];
+        var attribute = ((attr & 0x03) << 2) | 0x10;
+        var bgsp = (attr & 0x20) === 0x00;
 
         var x = tmpSpRAM[i + 3];
         var ex = x + 8;
         if (ex > 256) ex = 256;
-        var attr = tmpSpRAM[i + 2];
-        var attribute = ((attr & 0x03) << 2) | 0x10;
-        var bgsp = (attr & 0x20) === 0x00;
-        var iy = (attr & 0x80) === 0x80 ? tmpBigSize - 1 - (lineY - isy) : lineY - isy;
+        var iy = (attr & 0x80) === 0x80 ? this.isBigSize - 1 - (lineY - isy) : lineY - isy;
         var tileNum =
           ((iy & 0x08) << 1) +
           (iy & 0x07) +
-          (tmpBigSize === 8
-            ? (tmpSpRAM[i + 1] << 4) + tmpSpPatternTableAddress
+          (this.isBigSize === 8
+            ? (tmpSpRAM[i + 1] << 4) + spptableaddr
             : ((tmpSpRAM[i + 1] & 0xfe) << 4) + ((tmpSpRAM[i + 1] & 0x01) << 12));
-        var tmpHigh = tmpVRAM[tileNum >> 10];
+        var tmpHigh = this.VRAM[tileNum >> 10];
         var tmpLow = tileNum & 0x03ff;
-        var ptn = tmpSPBitArray[tmpHigh[tmpLow]][tmpHigh[tmpLow + 8]];
-        var is;
-        var ia;
         if ((attr & 0x40) === 0x00) {
-          is = 0;
-          ia = 1;
+          var is = 0;
+          var ia = 1;
         } else {
-          is = 7;
-          ia = -1;
+          var is = 7;
+          var ia = -1;
         }
 
+        var ptn = this.SPBitArray[tmpHigh[tmpLow]][tmpHigh[tmpLow + 8]];
         for (; x < ex; x++, is += ia) {
           var tmpPtn = ptn[is];
           if (tmpPtn !== 0x00 && tmpSpLine[x] === 256) {
             tmpSpLine[x] = i;
-            if (x >= tmpIsSpriteClipping && (bgsp || tmpBgLineBuffer[x] === 0x10))
-              tmpBgLineBuffer[x] = tmpPtn | attribute;
+            if (x >= SpriteClipping && (bgsp || this.BgLineBuffer[x] === 0x10))
+            this.BgLineBuffer[x] = tmpPtn | attribute;
           }
         }
       }
@@ -338,7 +332,8 @@ class PPU {
   WriteScrollRegister(value) {
     this.IO1[0x05] = value;
     if (this.ScrollRegisterFlag) {
-      this.PPUAddressBuffer = (this.PPUAddressBuffer & 0x8c1f) | ((value & 0xf8) << 2) | ((value & 0x07) << 12);
+      this.PPUAddressBuffer =
+        (this.PPUAddressBuffer & 0x8c1f) | ((value & 0xf8) << 2) | ((value & 0x07) << 12);
     } else {
       this.PPUAddressBuffer = (this.PPUAddressBuffer & 0xffe0) | ((value & 0xf8) >> 3);
       this.HScrollTmp = value & 7;
@@ -354,7 +349,8 @@ class PPU {
   }
   WritePPUAddressRegister(value) {
     this.IO1[0x06] = value;
-    if (this.PPUAddressRegisterFlag) this.PPUAddress = this.PPUAddressBuffer = (this.PPUAddressBuffer & 0xff00) | value;
+    if (this.PPUAddressRegisterFlag)
+      this.PPUAddress = this.PPUAddressBuffer = (this.PPUAddressBuffer & 0xff00) | value;
     else this.PPUAddressBuffer = (this.PPUAddressBuffer & 0x00ff) | ((value & 0x3f) << 8);
     this.PPUAddressRegisterFlag = !this.PPUAddressRegisterFlag;
   }
@@ -406,10 +402,10 @@ class PPU {
   WriteSpriteAddressRegister(data) {
     this.IO1[0x03] = data;
   }
-  get IsScreenEnable(){
+  get IsScreenEnable() {
     return (this.IO1[0x01] & 0x08) === 0x08;
   }
-  get IsSpriteEnable(){
+  get IsSpriteEnable() {
     return (this.IO1[0x01] & 0x10) === 0x10;
   }
   initCanvas() {
@@ -445,7 +441,8 @@ class PPU {
       this.SPBitArray[i] = new Array(256);
       for (var j = 0; j < 256; j++) {
         this.SPBitArray[i][j] = new Array(8);
-        for (var k = 0; k < 8; k++) this.SPBitArray[i][j][k] = (((i << k) & 0x80) >>> 7) | (((j << k) & 0x80) >>> 6);
+        for (var k = 0; k < 8; k++)
+          this.SPBitArray[i][j][k] = (((i << k) & 0x80) >>> 7) | (((j << k) & 0x80) >>> 6);
       }
     }
     for (var i = 0; i < this.SpriteLineBuffer.length; i++) {
