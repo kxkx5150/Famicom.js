@@ -146,69 +146,24 @@ class PPU {
   PpuRun() {
     var tmpx = this.PpuX;
     this.PpuX += this.nes.cpu.CPUClock * 3;
-    const fb = this.framebuffer_u32;
 
     while (this.PpuX >= 341) {
-      var IsScreenEnable = (this.IO1[0x01] & 0x08) === 0x08;
-      var IsSpriteEnable = (this.IO1[0x01] & 0x10) === 0x10;
-
       this.PpuX -= 341;
       tmpx = 0;
       this.Sprite0Line = false;
       this.PpuY++;
 
       if (this.PpuY === 262) {
-        this.PpuY = 0;
-        if (IsScreenEnable || IsSpriteEnable) {
-          this.PPUAddress = this.PPUAddressBuffer;
-        }
-        this.IO1[0x02] &= 0x7f;
+        this.postRender();
       }
 
       this.nes.mapper.HSync(this.PpuY);
 
       if (this.PpuY === 240) {
-        this.nes.DrawFlag = true;
-        if (this.nes.speedCount <= 1) this.ctx.putImageData(this.ImageData, 0, 0);
-
-        this.ScrollRegisterFlag = false;
-        this.IO1[0x02] &= 0x1f;
-        this.IO1[0x02] |= 0x80;
-        if ((this.IO1[0x00] & 0x80) === 0x80) this.nes.irq.nmiWanted = true;
+        this.inVblank();
         continue;
       } else if (this.PpuY < 240) {
-        var p;
-        var tmpDist;
-        var tmpPal;
-        if (IsScreenEnable || IsSpriteEnable) {
-          this.PPUAddress = (this.PPUAddress & 0xfbe0) | (this.PPUAddressBuffer & 0x041f);
-
-          if (8 <= this.PpuY && this.PpuY < 232) {
-            this.BuildBGLine();
-            this.BuildSpriteLine();
-            tmpDist = (this.PpuY - 8) << 10;
-            for (p = 0; p < 256; p++, tmpDist += 4) {
-              tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
-              this.setImageData(fb,tmpDist, tmpPal);
-            }
-          } else {
-            for (p = 0; p < 264; p++) this.BgLineBuffer[p] = 0x10;
-            this.BuildSpriteLine();
-          }
-
-          if ((this.PPUAddress & 0x7000) === 0x7000) {
-            this.PPUAddress &= 0x8fff;
-            if ((this.PPUAddress & 0x03e0) === 0x03a0) this.PPUAddress = (this.PPUAddress ^ 0x0800) & 0xfc1f;
-            else if ((this.PPUAddress & 0x03e0) === 0x03e0) this.PPUAddress &= 0xfc1f;
-            else this.PPUAddress += 0x0020;
-          } else this.PPUAddress += 0x1000;
-        } else if (8 <= this.PpuY && this.PpuY < 232) {
-          tmpDist = (this.PpuY - 8) << 10;
-          tmpPal = this.PaletteTable[this.Palette[0x10]];
-          for (p = 0; p < 256; p++, tmpDist += 4) {
-            this.setImageData(fb,tmpDist, tmpPal);
-          }
-        }
+        this.renderFrame();
       }
     }
 
@@ -221,6 +176,64 @@ class PPU {
         }
       }
     }
+  }
+  get IsScreenEnable(){
+    return (this.IO1[0x01] & 0x08) === 0x08;
+  }
+  get IsSpriteEnable(){
+    return (this.IO1[0x01] & 0x10) === 0x10;
+  }
+  renderFrame(){
+    var tmpDist;
+    var tmpPal;
+    if (this.IsScreenEnable || this.IsSpriteEnable) {
+      this.PPUAddress = (this.PPUAddress & 0xfbe0) | (this.PPUAddressBuffer & 0x041f);
+  
+      if (8 <= this.PpuY && this.PpuY < 232) {
+        this.BuildBGLine();
+        this.BuildSpriteLine();
+        tmpDist = (this.PpuY - 8) << 10;
+        const fb = this.framebuffer_u32;
+        for (var p = 0; p < 256; p++, tmpDist += 4) {
+          tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
+          this.setImageData(fb,tmpDist, tmpPal);
+        }
+      } else {
+        for (var p = 0; p < 264; p++) this.BgLineBuffer[p] = 0x10;
+        this.BuildSpriteLine();
+      }
+  
+      if ((this.PPUAddress & 0x7000) === 0x7000) {
+        this.PPUAddress &= 0x8fff;
+        if ((this.PPUAddress & 0x03e0) === 0x03a0) this.PPUAddress = (this.PPUAddress ^ 0x0800) & 0xfc1f;
+        else if ((this.PPUAddress & 0x03e0) === 0x03e0) this.PPUAddress &= 0xfc1f;
+        else this.PPUAddress += 0x0020;
+      } else this.PPUAddress += 0x1000;
+    } else if (8 <= this.PpuY && this.PpuY < 232) {
+      tmpDist = (this.PpuY - 8) << 10;
+      const fb = this.framebuffer_u32;
+      tmpPal = this.PaletteTable[this.Palette[0x10]];
+      for (var p = 0; p < 256; p++, tmpDist += 4) {
+        this.setImageData(fb,tmpDist, tmpPal);
+      }
+    }
+  }
+  inVblank(){
+    this.nes.DrawFlag = true;
+    if (this.nes.speedCount <= 1) this.ctx.putImageData(this.ImageData, 0, 0);
+  
+    this.ScrollRegisterFlag = false;
+    this.IO1[0x02] &= 0x1f;
+    this.IO1[0x02] |= 0x80;
+    if ((this.IO1[0x00] & 0x80) === 0x80) this.nes.irq.nmiWanted = true;
+  
+  }
+  postRender(){
+    this.PpuY = 0;
+    if (this.IsScreenEnable || this.IsSpriteEnable) {
+      this.PPUAddress = this.PPUAddressBuffer;
+    }
+    this.IO1[0x02] &= 0x7f;
   }
   setImageData(fb,dist, plt) {
     fb[dist / 4] = (255 << 24) | (plt[2] << 16) | (plt[1] << 8) | plt[0];

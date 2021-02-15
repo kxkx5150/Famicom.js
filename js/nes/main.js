@@ -1,7 +1,7 @@
 class NES {
   constructor(canvas) {
     ////   CPU type    ////
-    this.cpuType = 2;
+    this.cpuType = 1;
     // cpu1 cycles = 26554
     // cpu2 cycles = 26566
     // nestest     = 26554
