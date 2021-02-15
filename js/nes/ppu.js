@@ -149,9 +149,9 @@ class PPU {
 
     while (this.PpuX >= 341) {
       this.PpuX -= 341;
+      this.PpuY++;
       tmpx = 0;
       this.Sprite0Line = false;
-      this.PpuY++;
 
       if (this.PpuY === 262) {
         this.postRender();
@@ -177,25 +177,17 @@ class PPU {
       }
     }
   }
-  get IsScreenEnable(){
-    return (this.IO1[0x01] & 0x08) === 0x08;
-  }
-  get IsSpriteEnable(){
-    return (this.IO1[0x01] & 0x10) === 0x10;
-  }
   renderFrame(){
-    var tmpDist;
-    var tmpPal;
     if (this.IsScreenEnable || this.IsSpriteEnable) {
       this.PPUAddress = (this.PPUAddress & 0xfbe0) | (this.PPUAddressBuffer & 0x041f);
   
       if (8 <= this.PpuY && this.PpuY < 232) {
         this.BuildBGLine();
         this.BuildSpriteLine();
-        tmpDist = (this.PpuY - 8) << 10;
+        let tmpDist = (this.PpuY - 8) << 10;
         const fb = this.framebuffer_u32;
         for (var p = 0; p < 256; p++, tmpDist += 4) {
-          tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
+          let tmpPal = this.PaletteTable[this.Palette[this.BgLineBuffer[p]]];
           this.setImageData(fb,tmpDist, tmpPal);
         }
       } else {
@@ -210,9 +202,9 @@ class PPU {
         else this.PPUAddress += 0x0020;
       } else this.PPUAddress += 0x1000;
     } else if (8 <= this.PpuY && this.PpuY < 232) {
-      tmpDist = (this.PpuY - 8) << 10;
+      let tmpDist = (this.PpuY - 8) << 10;
       const fb = this.framebuffer_u32;
-      tmpPal = this.PaletteTable[this.Palette[0x10]];
+      let tmpPal = this.PaletteTable[this.Palette[0x10]];
       for (var p = 0; p < 256; p++, tmpDist += 4) {
         this.setImageData(fb,tmpDist, tmpPal);
       }
@@ -221,12 +213,10 @@ class PPU {
   inVblank(){
     this.nes.DrawFlag = true;
     if (this.nes.speedCount <= 1) this.ctx.putImageData(this.ImageData, 0, 0);
-  
     this.ScrollRegisterFlag = false;
     this.IO1[0x02] &= 0x1f;
     this.IO1[0x02] |= 0x80;
     if ((this.IO1[0x00] & 0x80) === 0x80) this.nes.irq.nmiWanted = true;
-  
   }
   postRender(){
     this.PpuY = 0;
@@ -239,30 +229,25 @@ class PPU {
     fb[dist / 4] = (255 << 24) | (plt[2] << 16) | (plt[1] << 8) | plt[0];
   }
   BuildBGLine() {
-    var p;
-    var tmpBgLineBuffer = this.BgLineBuffer;
     if ((this.IO1[0x01] & 0x08) !== 0x08) {
-      for (p = 0; p < 264; p++) tmpBgLineBuffer[p] = 0x10;
+      for (let p = 0; p < 264; p++) this.BgLineBuffer[p] = 0x10;
       return;
     }
 
     this.nes.mapper.BuildBGLine();
     if ((this.IO1[0x01] & 0x02) !== 0x02) {
-      for (p = 0; p < 8; p++) tmpBgLineBuffer[p] = 0x10;
+      for (let p = 0; p < 8; p++) this.BgLineBuffer[p] = 0x10;
     }
   }
   BuildBGLine_SUB() {
-    var tmpBgLineBuffer = this.BgLineBuffer;
     var tmpVRAM = this.VRAM;
     var nameAddr = 0x2000 | (this.PPUAddress & 0x0fff);
     var tableAddr = ((this.PPUAddress & 0x7000) >> 12) | ((this.IO1[0x00] & 0x10) << 8);
     var nameAddrHigh = nameAddr >> 10;
     var nameAddrLow = nameAddr & 0x03ff;
     var tmpVRAMHigh = tmpVRAM[nameAddrHigh];
-    var tmpPaletteArray = this.PaletteArray;
-    var tmpSPBitArray = this.SPBitArray;
-    var q = 0;
     var s = this.HScrollTmp;
+    var q = 0;
 
     for (var p = 0; p < 33; p++) {
       var ptnDist = (tmpVRAMHigh[nameAddrLow] << 4) | tableAddr;
@@ -272,9 +257,9 @@ class PPU {
         ((tmpVRAMHigh[((nameAddrLow & 0x0380) >> 4) | (((nameAddrLow & 0x001c) >> 2) + 0x03c0)] << 2) >>
           (((nameAddrLow & 0x0040) >> 4) | (nameAddrLow & 0x0002))) &
         0x0c;
-      var ptn = tmpSPBitArray[tmpSrcV[ptnDist]][tmpSrcV[ptnDist + 8]];
+      var ptn = this.SPBitArray[tmpSrcV[ptnDist]][tmpSrcV[ptnDist + 8]];
 
-      for (; s < 8; s++, q++) tmpBgLineBuffer[q] = tmpPaletteArray[ptn[s] | attr];
+      for (; s < 8; s++, q++) this.BgLineBuffer[q] = this.PaletteArray[ptn[s] | attr];
       s = 0;
 
       if ((nameAddrLow & 0x001f) === 0x001f) {
@@ -420,6 +405,12 @@ class PPU {
   }
   WriteSpriteAddressRegister(data) {
     this.IO1[0x03] = data;
+  }
+  get IsScreenEnable(){
+    return (this.IO1[0x01] & 0x08) === 0x08;
+  }
+  get IsSpriteEnable(){
+    return (this.IO1[0x01] & 0x10) === 0x10;
   }
   initCanvas() {
     for (var i = 0; i < this.width * this.height * 4; i += 4) {
