@@ -169,7 +169,7 @@ class GAMEPAD {
   }
   checkAxesButton(name, pressed) {
     if (pressed) {
-      if (this.axesMap[name].press) return;
+      // if (this.axesMap[name].press) return;
       this.axesMap[name].press = true;
       this.keyDown(1, this.INPUT[name]);
       return true;
@@ -189,7 +189,7 @@ class GAMEPAD {
       }
       if (i === this.buttonMap[name].no) {
         if (btn.pressed) {
-          if (this.buttonMap[name].press) return;
+          // if (this.buttonMap[name].press) return;
           this.buttonMap[name].press = true;
           this.keyDown(1, this.INPUT[name]);
           return true;
