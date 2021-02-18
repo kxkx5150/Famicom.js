@@ -110,14 +110,14 @@ class GAMEPAD {
   }
   checkAxes(axes) {
     var val = 0;
-    if (axes[0] === -1) {
+    if (axes[0] < -0.5) {
       val += 1;
-    } else if (axes[0] === 1) {
+    } else if (axes[0] > 0.5) {
       val += 2;
     }
-    if (axes[1] === -1) {
+    if (axes[1] < -0.5) {
       val += 4;
-    } else if (axes[1] === 1) {
+    } else if (axes[1] > 0.5) {
       val += 8;
     }
     if (val === 1) {
