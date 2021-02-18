@@ -30,6 +30,10 @@ button:focus {
   padding-right: 8px;
   cursor: pointer;
 }
+#gamepad_cont{
+  width: fit-content;
+  margin: auto;
+}
 #setteings {
   vertical-align: middle;
   padding: 4px;
@@ -45,6 +49,12 @@ button:focus {
   height: 224px;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
+}
+.button_div{
+  margin: 18px;
+}
+.button_div select{
+  font-size: 15px;
 }
 .warpdiv {
   position: absolute;
@@ -78,7 +88,7 @@ button:focus {
   padding-left: 18px;
 }
 #gamepad_name {
-  padding: 8px;
+  padding: 18px 4px 8px 4px;
   color: deeppink;
 }
 .keyhelp label {

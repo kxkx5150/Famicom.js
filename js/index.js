@@ -112,6 +112,10 @@ document.getElementById("setteings").addEventListener("click", (e) => {
 document.getElementById("settingdiv").addEventListener("click", (e) => {
   hideSetting();
 });
+document.getElementById("gamepad_button_container").addEventListener("click", (e) => {
+  e.stopPropagation();
+  e.preventDefault();
+},true);
 function hideSetting() {
   let elem = document.getElementById("settingdiv");
   if (elem.style.display == "block") {

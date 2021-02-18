@@ -1,5 +1,5 @@
-class GAMEPAD{
-  constructor(nes){
+class GAMEPAD {
+  constructor(nes) {
     this.nes = nes;
     this.selected = -1;
     this.pads = [];
@@ -49,12 +49,50 @@ class GAMEPAD{
         press: false,
       },
     };
-    window.addEventListener("gamepadconnected", (e)=> {
+    window.addEventListener("gamepadconnected", (e) => {
       this.pads[e.gamepad.index] = e.gamepad;
-      if(this.selected === -1)this.selected = 0;
-      document.getElementById("gamepad_info").textContent = "Gamepad connected "
+      if (this.selected === -1) this.selected = e.gamepad.index;
+      document.getElementById("gamepad_info").textContent = "Gamepad connected ";
       document.getElementById("gamepad_name").textContent = e.gamepad.id;
     });
+    this.button_info_elem = document.getElementById("gamepad_presse_button");
+    this.createOptions("start_button");
+    this.createOptions("select_button");
+    this.createOptions("a_button");
+    this.createOptions("b_button");
+    this.loadValue();
+
+    document.getElementById("start_button").addEventListener("change",this.setValue.bind(this))
+    document.getElementById("select_button").addEventListener("change",this.setValue.bind(this))
+    document.getElementById("a_button").addEventListener("change",this.setValue.bind(this))
+    document.getElementById("b_button").addEventListener("change",this.setValue.bind(this))
+
+  }
+  loadValue(){
+    let lobj = localStorage.getItem("button_settings");
+    if(lobj){
+      this.buttonMap = JSON.parse(lobj);
+    }
+    document.getElementById("start_button").value = this.buttonMap.START.no;
+    document.getElementById("select_button").value = this.buttonMap.SELECT.no;
+    document.getElementById("a_button").value = this.buttonMap.A.no;
+    document.getElementById("b_button").value = this.buttonMap.B.no;
+  }
+  setValue(){
+    this.buttonMap.START.no = document.getElementById("start_button").value-0
+    this.buttonMap.SELECT.no = document.getElementById("select_button").value-0
+    this.buttonMap.A.no = document.getElementById("a_button").value-0
+    this.buttonMap.B.no = document.getElementById("b_button").value-0
+    localStorage.setItem("button_settings",JSON.stringify(this.buttonMap))
+  }
+  createOptions(cont_id) {
+    let cont = document.getElementById(cont_id)
+    for (var i = 0; i < 20; i++) {
+      var option = document.createElement("option");
+      option.value = i;
+      option.text = "Button "+i;
+      cont.appendChild(option);
+    }
   }
   keyDown(player, button) {
     if (player === 1) {
@@ -68,16 +106,6 @@ class GAMEPAD{
       this.nes.io.crntCtrlState1 &= ~(1 << button) & 0xff;
     } else if (player === 2) {
       this.nes.io.crntCtrlState2 &= ~(1 << button) & 0xff;
-    }
-  }
-  updateGamepad() {
-    var pad = navigator.getGamepads()[this.selected];
-    if (pad) {
-      this.checkButton("START", pad.buttons);
-      this.checkButton("SELECT", pad.buttons);
-      this.checkAxes(pad.axes);
-      this.checkButton("A", pad.buttons);
-      this.checkButton("B", pad.buttons);
     }
   }
   checkAxes(axes) {
@@ -156,6 +184,9 @@ class GAMEPAD{
   checkButton(name, buttons) {
     for (var i = 0; i < buttons.length; i++) {
       let btn = buttons[i];
+      if(btn.pressed){
+        this.button_info_elem.textContent = "Button "+i;
+      }
       if (i === this.buttonMap[name].no) {
         if (btn.pressed) {
           if (this.buttonMap[name].press) return;
@@ -171,5 +202,15 @@ class GAMEPAD{
       }
     }
     return;
+  }
+  updateGamepad() {
+    var pad = navigator.getGamepads()[this.selected];
+    if (pad) {
+      this.checkButton("START", pad.buttons);
+      this.checkButton("SELECT", pad.buttons);
+      this.checkAxes(pad.axes);
+      this.checkButton("A", pad.buttons);
+      this.checkButton("B", pad.buttons);
+    }
   }
 }
