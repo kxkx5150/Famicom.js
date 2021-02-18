@@ -25,6 +25,16 @@ button:focus {
   cursor: pointer;
   border: 0;
 }
+#gamepad_info {
+  color: chocolate;
+  padding-right: 8px;
+  cursor: pointer;
+}
+#setteings {
+  vertical-align: middle;
+  padding: 4px;
+  cursor: pointer;
+}
 #speed {
   vertical-align: middle;
   margin-left: 18px;
@@ -35,6 +45,46 @@ button:focus {
   height: 224px;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
+}
+.warpdiv {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: -500px;
+  color: #777;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 999;
+  font-size: 13px;
+  transition-property: left;
+  transition-duration: 0.3s;
+}
+.warpcontainer {
+  position: relative;
+  background-color: #fff;
+  color: black;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 16px;
+  padding: 18px 12px 42px 12px;
+  width: 84%;
+  left: 8%;
+  top: 36px;
+  box-shadow: rgb(0 0 0 / 40%) 0px 0px 6px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-sizing: border-box;
+  padding-left: 18px;
+}
+#gamepad_name {
+  padding: 8px;
+  color: deeppink;
+}
+.keyhelp label {
+  width: 200px;
+  display: inline-block;
+  text-align: right;
 }
 .ctrl_div {
   text-align: right;
@@ -55,7 +105,7 @@ button:focus {
   background-color: dodgerblue;
   display: inline-block;
 }
-.github a{
+.github a {
   float: left;
   color: cornflowerblue;
   text-decoration: none;
