@@ -1,3 +1,4 @@
+'use strict';
 class GAMEPAD {
   constructor(nes) {
     this.nes = nes;

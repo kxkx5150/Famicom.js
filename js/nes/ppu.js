@@ -1,3 +1,4 @@
+'use strict';
 class PPU {
   constructor(nes, ctx) {
     this.nes = nes;

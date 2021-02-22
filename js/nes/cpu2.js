@@ -1,3 +1,4 @@
+'use strict';
 class CPU2 {
   constructor(nes, mem) {
     this.nes = nes;

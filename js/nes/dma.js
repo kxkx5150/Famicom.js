@@ -1,3 +1,4 @@
+'use strict';
 class DMA {
   constructor(nes) {
     this.nes = nes;

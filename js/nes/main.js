@@ -1,3 +1,4 @@
+'use strict';
 class NES {
   constructor(canvas) {
     ////   CPU type    ////

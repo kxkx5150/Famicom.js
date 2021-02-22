@@ -1,4 +1,4 @@
-
+'use strict';
 class APU {
   constructor(nes) {
     this.nes = nes;

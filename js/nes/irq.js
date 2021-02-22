@@ -1,3 +1,4 @@
+'use strict';
 class IRQ {
   mapperIrqWanted = false;
   frameIrqWanted = false;

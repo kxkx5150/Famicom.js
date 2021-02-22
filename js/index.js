@@ -1,3 +1,4 @@
+'use strict';
 const canvas = document.getElementById("output");
 const nes = new NES(canvas);
 
@@ -86,7 +87,7 @@ const checkKeyMap = (e, up) => {
     e.stopPropagation();
   }
 };
-resizeCanvas = () => {
+const resizeCanvas = () => {
   setTimeout(() => {
     let canvas = document.getElementById("output");
     const wh = window.innerHeight;

@@ -1,3 +1,4 @@
+'use strict';
 class IO {
   nes = null;
   crntCtrlState1 = 0;

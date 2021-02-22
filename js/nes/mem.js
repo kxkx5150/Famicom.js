@@ -1,3 +1,4 @@
+'use strict';
 class RAM {
   constructor(nes) {
     this.nes = nes;
