@@ -1,4 +1,4 @@
-
+'use strict';
 class Mapper10 extends Base {
 	constructor(nes) {
 		super(nes)

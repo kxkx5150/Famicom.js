@@ -1,3 +1,4 @@
+'use strict';
 class Base {
   constructor(nes) {
     this.nes = nes;
