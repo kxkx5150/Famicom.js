@@ -43,7 +43,7 @@ http://taotao54321.hatenablog.com/archive/category/NES
 解説サイトを読むより良いと思います。
 
 FaithJS  
-https://sairoutine.github.io/faithjs/public/
+https://github.com/sairoutine/faithjs
 
 <br><br><br>
 
