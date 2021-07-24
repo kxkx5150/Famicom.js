@@ -24,6 +24,10 @@ NES Emulator
 Demo  
 https://kxkx5150.github.io/Famicom.js/  
 
+WASM Emulator  
+https://github.com/kxkx5150/fceux-wasm
+
+
 <br><br><br><br><br>
 
 ### 参考にさせて頂いたページ
