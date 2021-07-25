@@ -3,7 +3,7 @@
 ### JavaScript ファミコンエミュレータ
 
 NES Emulator
-<br><br><br><br>
+<br><br><br>
 
 
   enter = START  
@@ -11,6 +11,8 @@ NES Emulator
   z = B  
   a = A  
 
+  <br><br>
+  
   Famicom のSaveに対応しました。rom file name　と紐ついているのでファイル名を変えると消えます。  
   速度調整出来るようにしました。
   ゲームパッドで出来るように設定を追加 (gamepad api)
@@ -24,11 +26,11 @@ NES Emulator
 Demo  
 https://kxkx5150.github.io/Famicom.js/  
 
-WASM Emulator  
+fceux-wasm (WASM)     
 https://github.com/kxkx5150/fceux-wasm
 
 
-<br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
 
 ### 参考にさせて頂いたページ
 
