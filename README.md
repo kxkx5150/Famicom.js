@@ -27,8 +27,7 @@ Demo
 https://kxkx5150.github.io/Famicom.js/  
 
 Demo wasm版　(MMC5対応)     
-https://kxkx5150.github.io/Famicom.wasm/
-
+https://kxkx5150.github.io/Famicom-wasm/
 
 <br><br><br><br><br><br><br><br><br>
 
