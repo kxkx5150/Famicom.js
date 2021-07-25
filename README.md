@@ -26,7 +26,7 @@ NES Emulator
 Demo  
 https://kxkx5150.github.io/Famicom.js/  
 
-fceux-wasm (WASM)     
+Demo wasm版　(MMC5対応)     
 https://github.com/kxkx5150/fceux-wasm
 
 
