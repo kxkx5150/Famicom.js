@@ -4,7 +4,7 @@
 
 NES Emulator
 
-<br><br><br>
+<br><br>
 
 
   enter = START  
@@ -18,11 +18,11 @@ NES Emulator
   速度調整出来るようにしました。
   ゲームパッドで出来るように設定を追加 (gamepad api)
 
-<br>
+<br><br>
 
 ![キャプチャ](https://user-images.githubusercontent.com/10168979/106599944-1dd98e80-659d-11eb-99a9-72e8363cb07b.PNG)
 
-<br>
+<br><br>
 
 Demo  
 https://kxkx5150.github.io/Famicom.js/  
