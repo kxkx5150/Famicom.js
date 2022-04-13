@@ -177,15 +177,19 @@ class NES {
     this.speedCount = this.speed;
     if (this.interval % 2 === 0) this.gpad.updateGamepad();
     this.interval++;
+
+
     while (!this.DrawFlag) {
-      if (this.io.ctrlLatched) this.io.hdCtrlLatch();
+
+
+
       const opobj = this.cpu.run();
-      if (this.cpu.CPUClock < 1) return;
-      this.mapper.CPUSync(this.cpu.CPUClock);
-      this.ppu.PpuRun();
-      if (this.actx) this.apu.clockFrameCounter(this.cpu.CPUClock);
-      this.cpu.CPUClock = 0;
       this.cpu.exec(opobj);
+      this.ppu.PpuRun();
+      this.cpu.CPUClock = 0;
+
+
+
       if (this.DrawFlag) {
         --this.speedCount;
         if (this.speedCount > 0) {

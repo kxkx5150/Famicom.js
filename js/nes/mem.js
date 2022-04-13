@@ -27,14 +27,12 @@ class RAM {
           case 0x0000:
           case 0x0001:
           case 0x0002:
-            // console.log("ReadPPUStatus: "+this.nes.cpu.PC[0].toString(16).toUpperCase());
             return this.nes.ppu.ReadPPUStatus();
           case 0x0003:
           case 0x0004:
           case 0x0005:
           case 0x0006:
           case 0x0007:
-            // console.log("ReadPPUData: "+this.nes.cpu.PC[0].toString(16).toUpperCase());
             return this.nes.ppu.ReadPPUData();
         }
         return 0;
@@ -65,15 +63,17 @@ class RAM {
           case 0x4013:
           case 0x4014:
           case 0x4015:
-            return this.nes.apu.readReg(address);
+            return 0;//this.nes.apu.readReg(address);
           case 0x4016:
-            var ret = this.nes.io.getLatchedCtrlState(1) & 1;
-            this.nes.io.setLatchedCtrlState(1);
-            return ret | 0x40;
+            // var ret = this.nes.io.getLatchedCtrlState(1) & 1;
+            // this.nes.io.setLatchedCtrlState(1);
+            // return ret | 0x40;
+            return;
           case 0x4017:
-            var ret = this.nes.io.getLatchedCtrlState(2) & 1;
-            this.nes.io.setLatchedCtrlState(2);
-            return ret | 0x40;
+            // var ret = this.nes.io.getLatchedCtrlState(2) & 1;
+            // this.nes.io.setLatchedCtrlState(2);
+            // return ret | 0x40;
+            return;
           case 0x4018:
           case 0x4019:
           case 0x401a:
@@ -169,23 +169,23 @@ class RAM {
             case 0x4011:
             case 0x4012:
             case 0x4013:
-              this.nes.apu.writeReg(address, data);
+              // this.nes.apu.writeReg(address, data);
               return;      
             case 0x4014:
               this.nes.dma.onDma(data);
               return;
             case 0x4015:
-              this.nes.apu.writeReg(address, data);
+              // this.nes.apu.writeReg(address, data);
               return;
             case 0x4016:
-              if ((data & 0x01) > 0) {
-                this.nes.io.ctrlLatched = true;
-              } else {
-                this.nes.io.ctrlLatched = false;
-              }
+              // if ((data & 0x01) > 0) {
+              //   this.nes.io.ctrlLatched = true;
+              // } else {
+              //   this.nes.io.ctrlLatched = false;
+              // }
               return;
             case 0x4017:
-              this.nes.apu.writeReg(address, data);
+              // this.nes.apu.writeReg(address, data);
               return;
             case 0x4018:
             case 0x4019:
